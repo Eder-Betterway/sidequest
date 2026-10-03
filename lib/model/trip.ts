@@ -14,6 +14,10 @@ export interface TripDoc {
   createdBy: string;
   createdAt: number;
   updatedAt: number;
+  /** Wizard answers (lib/model/inputs.ts). Read with readInputs(), which tolerates old or partial records. */
+  inputs?: unknown;
+  /** The option the plan was built from. */
+  chosenOptionId?: string | null;
 }
 
 export interface Trip extends TripDoc {

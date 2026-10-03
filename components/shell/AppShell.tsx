@@ -80,6 +80,7 @@ function SignedIn({ email }: { email: string }) {
             ) : (
               <PlanView
                 trip={active}
+                email={email}
                 onDeleted={() => {
                   open(null);
                   setTab("trips");

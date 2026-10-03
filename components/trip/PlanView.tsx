@@ -1,36 +1,77 @@
 "use client";
 
 import { useState } from "react";
-import { deleteTrip } from "@/lib/data/trips";
+import { deleteTripWithPlan } from "@/lib/data/plan";
+import { readInputs } from "@/lib/model/inputs";
 import { formatTripDates, type Trip } from "@/lib/model/trip";
+import { Segmented } from "@/components/ui/fields";
+import TripWizard from "@/components/plan/TripWizard";
+import OptionsView from "@/components/plan/OptionsView";
+import DayPlan from "@/components/plan/DayPlan";
+import { usePlan } from "@/components/plan/usePlan";
 import { Notice } from "./TripsView";
 
-/**
- * The open trip. For now: its basics and a delete button. The day-by-day plan,
- * dials, and deep-dives land here in the next steps.
- */
-export default function PlanView({ trip, onDeleted }: { trip: Trip | null; onDeleted: () => void }) {
-  const [confirming, setConfirming] = useState(false);
-
+/** The open trip: its day plan once there is one, otherwise the options to build it from. */
+export default function PlanView({
+  trip,
+  email,
+  onDeleted,
+}: {
+  trip: Trip | null;
+  email: string;
+  onDeleted: () => void;
+}) {
   if (!trip) {
     return <Notice title="No trip open">Pick a trip on the Trips tab, or start a new one.</Notice>;
   }
+  // Keyed so switching trips resets everything inside.
+  return <OpenTrip key={trip.id} trip={trip} email={email} onDeleted={onDeleted} />;
+}
+
+function OpenTrip({ trip, email, onDeleted }: { trip: Trip; email: string; onDeleted: () => void }) {
+  const plan = usePlan(trip.id);
+  const inputs = readInputs(trip.inputs);
+  const [wizard, setWizard] = useState(false);
+  const [view, setView] = useState<"days" | "options">("days");
+  const [confirming, setConfirming] = useState(false);
+
+  const hasDays = plan.days.length > 0;
+  const showing = hasDays ? view : "options";
 
   return (
     <div className="space-y-4">
-      <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Open trip</p>
-        <h2 className="mt-1 text-xl font-bold">{trip.title}</h2>
-        <p className="mt-1 text-sm text-muted">{formatTripDates(trip.startDate, trip.endDate)}</p>
-        <p className="mt-0.5 text-sm text-muted">{trip.memberEmails.join(" and ")}</p>
-      </section>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted">{formatTripDates(trip.startDate, trip.endDate)}</p>
+        <button type="button" onClick={() => setWizard(true)} className="min-h-11 text-sm font-medium text-accent">
+          Trip details
+        </button>
+      </div>
 
-      <Notice title="Day plan coming next">
-        Next up: the trip inputs (regions, must-dos, how you&apos;re getting around, what you&apos;re into), three
-        options to pick from, and a day-by-day timeline.
-      </Notice>
+      {hasDays && (
+        <Segmented
+          label="Show"
+          options={["days", "options"] as const}
+          value={view}
+          onChange={setView}
+        />
+      )}
 
-      <div className="pt-4">
+      {!plan.loaded ? (
+        <p className="py-6 text-center text-sm text-muted">Loading the plan...</p>
+      ) : showing === "days" ? (
+        <DayPlan tripId={trip.id} plan={plan} units={inputs.units} email={email} />
+      ) : (
+        <OptionsView
+          trip={trip}
+          inputs={inputs}
+          plan={plan}
+          email={email}
+          onEditInputs={() => setWizard(true)}
+          onPlanned={() => setView("days")}
+        />
+      )}
+
+      <div className="pt-6">
         {confirming ? (
           <div className="rounded-2xl border border-warn/40 bg-surface p-4">
             <p className="text-sm">Delete &quot;{trip.title}&quot; for everyone on it? This can&apos;t be undone.</p>
@@ -38,18 +79,18 @@ export default function PlanView({ trip, onDeleted }: { trip: Trip | null; onDel
               <button
                 type="button"
                 onClick={() => {
-                  deleteTrip(trip.id);
+                  deleteTripWithPlan(trip.id, {
+                    optionIds: plan.options.map((o) => o.id),
+                    dayIds: plan.days.map((d) => d.id),
+                    itemIds: plan.items.map((i) => i.id),
+                  });
                   onDeleted();
                 }}
                 className="min-h-11 flex-1 rounded-xl bg-warn font-semibold text-on-accent"
               >
                 Delete
               </button>
-              <button
-                type="button"
-                onClick={() => setConfirming(false)}
-                className="min-h-11 flex-1 rounded-xl border border-border font-medium"
-              >
+              <button type="button" onClick={() => setConfirming(false)} className="min-h-11 flex-1 rounded-xl border border-border font-medium">
                 Keep it
               </button>
             </div>
@@ -60,6 +101,8 @@ export default function PlanView({ trip, onDeleted }: { trip: Trip | null; onDel
           </button>
         )}
       </div>
+
+      {wizard && <TripWizard trip={trip} initial={inputs} onClose={() => setWizard(false)} />}
     </div>
   );
 }

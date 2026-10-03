@@ -1,4 +1,5 @@
 import { createRemoteJWKSet, decodeJwt, jwtVerify, type JWTPayload, type JWTVerifyGetKey } from "jose";
+import { EMULATOR_PROJECT_ID, USE_EMULATORS } from "@/lib/firebase/config";
 
 /**
  * The bouncer for every /api route that costs money (Claude, Places...).
@@ -45,7 +46,8 @@ export function parseAllowlist(raw: string | undefined): Set<string> {
 }
 
 export async function requireMember(req: Request, opts: GuardOptions = {}): Promise<GuardResult> {
-  const projectId = opts.projectId ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const projectId =
+    opts.projectId ?? (USE_EMULATORS ? EMULATOR_PROJECT_ID : process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
   const allowed = parseAllowlist(opts.allowedEmails ?? process.env.ALLOWED_EMAILS);
   const emulator = opts.acceptEmulatorTokens ?? Boolean(process.env.FIREBASE_AUTH_EMULATOR_HOST);
 

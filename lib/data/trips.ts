@@ -2,7 +2,6 @@
 
 import {
   collection,
-  deleteDoc,
   doc,
   onSnapshot,
   query,
@@ -68,8 +67,4 @@ export function createTrip(input: NewTripInput, me: string): CreateResult {
   const ref = doc(collection(db(), "trips"));
   setDoc(ref, built.trip).catch(reportFailure("saving the trip"));
   return { ok: true, id: ref.id };
-}
-
-export function deleteTrip(id: string): void {
-  deleteDoc(doc(db(), "trips", id)).catch(reportFailure("deleting the trip"));
 }

@@ -12,7 +12,7 @@ test("a trip made on one phone shows up live on the other, and can be deleted", 
   await page.getByRole("button", { name: "Create trip" }).click();
 
   // Creating opens the trip on the Plan tab.
-  await expect(page.getByRole("heading", { level: 2, name: "Shared desert loop" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Shared desert loop" })).toBeVisible();
   await expect(page.getByText("Oct 14 to 28, 2026")).toBeVisible();
 
   // The partner's phone: a separate browser with its own storage.
