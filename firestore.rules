@@ -1,0 +1,68 @@
+rules_version = '2';
+
+// Who can see and change what. Paste this into Firebase console > Firestore >
+// Rules for both projects whenever it changes (docs/SETUP.md, step 3).
+//
+// Two locks on every trip:
+// 1. Your email must be on the allowlist (config/allowlist, edited by hand in
+//    the console, never from the app). Strangers who make an account still
+//    can't read or write anything.
+// 2. Your email must be in that trip's memberEmails.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null && request.auth.token.email is string;
+    }
+
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function allowed() {
+      let list = /databases/$(database)/documents/config/allowlist;
+      return signedIn() && exists(list) && myEmail() in get(list).data.emails;
+    }
+
+    function isMember(trip) {
+      return myEmail() in trip.memberEmails;
+    }
+
+    function validTrip(trip) {
+      return trip.title is string
+        && trip.title.size() > 0
+        && trip.title.size() <= 120
+        && trip.memberEmails is list
+        && trip.memberEmails.size() >= 1
+        && trip.memberEmails.size() <= 8
+        && trip.createdBy is string;
+    }
+
+    match /config/{doc} {
+      allow read, write: if false;
+    }
+
+    match /trips/{tripId} {
+      allow read: if allowed() && isMember(resource.data);
+      allow create: if allowed()
+        && validTrip(request.resource.data)
+        && isMember(request.resource.data)
+        && request.resource.data.createdBy == myEmail();
+      // Members can edit, but can't lock themselves out or rewrite who made it.
+      allow update: if allowed()
+        && isMember(resource.data)
+        && isMember(request.resource.data)
+        && validTrip(request.resource.data)
+        && request.resource.data.createdBy == resource.data.createdBy;
+      allow delete: if allowed() && isMember(resource.data);
+
+      // Everything inside a trip (days, items, notes...) follows the trip's members.
+      // `{sub}/{rest=**}` needs at least one segment: a bare `{rest=**}` also
+      // matches the trip itself, which would bypass the update rules above.
+      match /{sub}/{rest=**} {
+        allow read, write: if allowed()
+          && myEmail() in get(/databases/$(database)/documents/trips/$(tripId)).data.memberEmails;
+      }
+    }
+  }
+}

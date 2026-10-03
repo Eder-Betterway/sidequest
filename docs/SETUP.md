@@ -1,6 +1,6 @@
 # One-time setup
 
-Goal: get Sidequest live on a real URL, on both phones, with co-building switched on. These are the steps only a person can do in a browser. Budget about 45 minutes. You can do them in any order, but the app needs sections 2 to 4 before sign-in works.
+Goal: get Sidequest live on a real URL, on both phones, with co-building switched on. These are the steps only a person can do in a browser. Budget about 45 minutes. You can do them in any order, but the app needs sections 3 and 4 before sign-in works.
 
 ## Cost
 
@@ -29,9 +29,16 @@ Make **two** projects, so test previews never touch your real trips.
 1. At console.firebase.google.com, **Add project**: `sidequest`. Skip Google Analytics.
 2. **Build > Authentication > Get started > Email/Password**: turn it on (leave "email link" off).
 3. **Authentication > Users > Add user**: add both of your emails with passwords. There's no sign-up screen in the app on purpose.
-4. **Build > Firestore Database > Create database**: pick a location near where you usually are, start in **production mode**. The real security rules arrive with the sign-in step and get pasted into **Firestore > Rules**.
-5. **Project settings (gear icon) > Your apps > Web (`</>`)**: register an app called `sidequest`. Copy the `apiKey`, `authDomain`, `projectId`, and `appId` values for Vercel below.
-6. Repeat 1 to 5 for a second project called `sidequest-test`. Add the same two users (any passwords).
+4. **Build > Firestore Database > Create database**: pick a location near where you usually are, start in **production mode**.
+5. **Security rules:** open [`firestore.rules`](../firestore.rules) on GitHub, copy all of it, then in Firebase go to **Firestore Database > Rules**, replace everything there with it, and tap **Publish**. Do this again whenever that file changes (the pull request will say so).
+6. **The allowlist** (who may use the app at all): **Firestore Database > Data > Start collection**.
+   - Collection ID: `config`
+   - Document ID: `allowlist`
+   - Field: `emails`, type **array**. Add both of your emails as strings, all lowercase.
+
+   Anyone not on this list sees "This account isn't on the list yet" even if they somehow get an account.
+7. **Project settings (gear icon) > Your apps > Web (`</>`)**: register an app called `sidequest`. Copy the `apiKey`, `authDomain`, `projectId`, and `appId` values for Vercel below.
+8. Repeat 1 to 7 for a second project called `sidequest-test`. Add the same two users (any passwords) and the same allowlist.
 
 ## 4. Vercel (hosting)
 
