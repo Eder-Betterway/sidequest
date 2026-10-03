@@ -5,11 +5,13 @@ import Sheet from "@/components/ui/Sheet";
 import { Field, inputClass, TextArea } from "@/components/ui/fields";
 import { addItem, deleteItem, swapOrder, updateItem } from "@/lib/data/plan";
 import { sunTimes } from "@/lib/grounding/sun";
-import { formatTime, ITEM_KINDS, sortItems, type ItemKind, type StoredItem } from "@/lib/model/plan";
+import { formatTime, ITEM_KINDS, sortItems, type ItemKind, type StoredDay, type StoredItem } from "@/lib/model/plan";
 import type { TripInputs } from "@/lib/model/inputs";
 import type { Trip } from "@/lib/model/trip";
 import type { PlanState } from "./usePlan";
 import DayTuner from "./DayTuner";
+import { stayRange } from "@/lib/plan/schedule";
+import PlaceSheet, { type PlaceTarget } from "@/components/place/PlaceSheet";
 
 const KIND_ICON: Record<ItemKind, string> = {
   activity: "●",
@@ -50,6 +52,7 @@ export default function DayPlan({
     return dates.includes(today) ? today : dates[0];
   });
   const [editing, setEditing] = useState<StoredItem | "new" | null>(null);
+  const [placeOpen, setPlaceOpen] = useState<{ target: PlaceTarget; from: string; to: string } | null>(null);
 
   const day = plan.days.find((d) => d.date === selected) ?? plan.days[0];
   const items = useMemo(
@@ -88,7 +91,16 @@ export default function DayPlan({
       <section className="rounded-2xl border border-border bg-surface p-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label.long}</p>
         <h2 className="mt-0.5 text-lg font-bold">{day.title}</h2>
-        <p className="text-sm text-muted">{day.base}</p>
+        <button
+          type="button"
+          onClick={() => {
+            const stay = stayRange(plan.days, day.date);
+            setPlaceOpen({ target: targetFromDay(day), from: stay.from, to: stay.to });
+          }}
+          className="min-h-11 text-left text-sm font-medium text-accent"
+        >
+          About {day.base} ›
+        </button>
         {sun ? (
           <dl className="mt-3 grid grid-cols-4 gap-2 text-center text-xs" aria-label="Sun times">
             {[
@@ -127,16 +139,35 @@ export default function DayPlan({
               <span aria-hidden className={`mt-0.5 w-4 text-center ${it.kind === "milestone" ? "text-accent" : "text-muted"}`}>
                 {KIND_ICON[it.kind]}
               </span>
-              <button type="button" onClick={() => setEditing(it)} className="min-w-0 flex-1 text-left">
-                <p className="text-xs text-muted">
-                  {it.start ? formatTime(it.start, units) : "Any time"}
-                  {it.end ? ` to ${formatTime(it.end, units)}` : ""}
-                  {it.pending && <span className="ml-2 text-warn">waiting to sync</span>}
-                </p>
-                <p className="font-medium">{it.title}</p>
-                {it.place && <p className="text-xs text-muted">{it.place}</p>}
-                {it.notes && <p className="mt-1 text-sm text-muted">{it.notes}</p>}
-              </button>
+              <div className="min-w-0 flex-1">
+                <button type="button" onClick={() => setEditing(it)} className="w-full text-left">
+                  <p className="text-xs text-muted">
+                    {it.start ? formatTime(it.start, units) : "Any time"}
+                    {it.end ? ` to ${formatTime(it.end, units)}` : ""}
+                    {it.pending && <span className="ml-2 text-warn">waiting to sync</span>}
+                  </p>
+                  <p className="font-medium">{it.title}</p>
+                  {it.place && <p className="text-xs text-muted">{it.place}</p>}
+                  {it.notes && <p className="mt-1 text-sm text-muted">{it.notes}</p>}
+                </button>
+                {it.place && it.kind !== "drive" && (
+                  <button
+                    type="button"
+                    aria-label={`Details for ${it.title}`}
+                    onClick={() =>
+                      setPlaceOpen({
+                        // Look the spot up near where you're staying that day.
+                        target: { ...targetFromDay(day), name: it.place! },
+                        from: day.date,
+                        to: day.date,
+                      })
+                    }
+                    className="mt-1 min-h-9 text-xs font-medium text-accent"
+                  >
+                    Details and hours ›
+                  </button>
+                )}
+              </div>
               <div className="flex shrink-0 flex-col items-center">
                 <button
                   type="button"
@@ -182,6 +213,18 @@ export default function DayPlan({
       </button>
       <p className="text-center text-xs text-muted">Locked items stay put when you re-plan. Milestones start locked.</p>
 
+      {placeOpen && (
+        <PlaceSheet
+          trip={trip}
+          inputs={inputs}
+          target={placeOpen.target}
+          from={placeOpen.from}
+          to={placeOpen.to}
+          email={email}
+          onClose={() => setPlaceOpen(null)}
+        />
+      )}
+
       {editing && (
         <ItemEditor
           item={editing === "new" ? null : editing}
@@ -207,6 +250,17 @@ export default function DayPlan({
       )}
     </div>
   );
+}
+
+/** Where a day's stop is, for looking things up near it. */
+function targetFromDay(day: StoredDay): PlaceTarget {
+  return {
+    name: day.base,
+    lat: day.place?.lat ?? null,
+    lng: day.place?.lng ?? null,
+    timezone: day.place?.timezone ?? null,
+    countryCode: day.place?.countryCode ?? null,
+  };
 }
 
 function LockIcon({ locked }: { locked: boolean }) {

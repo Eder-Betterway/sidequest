@@ -81,6 +81,7 @@ export function formatTripDates(start: string | null, end: string | null): strin
       ...(withYear ? { year: "numeric" } : {}),
       timeZone: "UTC",
     });
+  if (start && end && start === end) return fmt(start, true);
   if (start && end) {
     const sameYear = start.slice(0, 4) === end.slice(0, 4);
     const sameMonth = sameYear && start.slice(5, 7) === end.slice(5, 7);

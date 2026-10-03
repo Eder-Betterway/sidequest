@@ -52,6 +52,7 @@ describe("formatTripDates", () => {
     expect(formatTripDates("2026-12-28", "2027-01-03")).toBe("Dec 28, 2026 to Jan 3, 2027");
     expect(formatTripDates("2026-10-14", null)).toBe("From Oct 14, 2026");
     expect(formatTripDates(null, null)).toBe("Dates open");
+    expect(formatTripDates("2026-11-03", "2026-11-03")).toBe("Nov 3, 2026");
   });
 });
 

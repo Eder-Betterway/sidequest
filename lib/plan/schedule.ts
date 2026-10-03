@@ -78,3 +78,14 @@ export function pinMilestones(day: DayDraft, milestones: Milestone[]): PinnedIte
   }
   return items;
 }
+
+/** The run of consecutive days spent at the same base as `date`. */
+export function stayRange(days: { date: string; base: string }[], date: string): { from: string; to: string } {
+  const i = days.findIndex((d) => d.date === date);
+  if (i < 0) return { from: date, to: date };
+  let a = i;
+  let b = i;
+  while (a > 0 && days[a - 1].base === days[i].base) a--;
+  while (b < days.length - 1 && days[b + 1].base === days[i].base) b++;
+  return { from: days[a].date, to: days[b].date };
+}
