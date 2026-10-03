@@ -1,69 +1,92 @@
 "use client";
 
 import { useState } from "react";
-import TabBar, { TABS, type TabId } from "./TabBar";
+import TabBar, { type TabId } from "./TabBar";
 import StatusLine from "./StatusLine";
+import AccountMenu from "./AccountMenu";
+import SetupNeeded from "./SetupNeeded";
+import SignIn from "@/components/auth/SignIn";
+import { useAuth } from "@/components/auth/useAuth";
+import { useTrips } from "@/components/trip/useTrips";
+import TripsView, { Notice } from "@/components/trip/TripsView";
+import PlanView from "@/components/trip/PlanView";
+import { prefs } from "@/lib/prefs";
 
-// What each tab will hold, and which build step brings it. These cards go away
-// as the real screens land.
-const COMING: Record<TabId, { title: string; body: string; steps: string[] }> = {
-  trips: {
-    title: "Your trips",
-    body: "Start a trip from loose dates, regions, must-dos, and how you're getting around. Sidequest drafts three different takes on it and you pick one.",
-    steps: ["Sign in and shared trips", "Trip inputs, 3 options, day plan"],
-  },
-  plan: {
-    title: "Day by day",
-    body: "Each day as a timeline with sun times, drive legs, and lock toggles. Dial a day toward chill or packed and re-plan around whatever you've locked.",
-    steps: ["Vibe dials and re-planning", "Place deep-dives", "Campervan smarts"],
-  },
+// Tabs that don't have their real screen yet, and which build step brings it.
+const COMING: Partial<Record<TabId, { title: string; body: string }>> = {
   notes: {
     title: "Notes and local tips",
-    body: "Jot what a local told you, snap a flyer, or ask a question. Works with no signal, and turns into plan changes you accept or skip.",
-    steps: ["Local tips into the plan"],
+    body: "Jot what a local told you, snap a flyer, or ask a question. Works with no signal, and turns into plan changes you accept or skip. Coming with the local-tips step.",
   },
   ask: {
     title: "Ask anything",
-    body: "Questions about the trip, answered with your plan and notes in mind.",
-    steps: ["Local tips into the plan"],
+    body: "Questions about the trip, answered with your plan and notes in mind. Coming with the local-tips step.",
   },
 };
 
 export default function AppShell() {
-  const [tab, setTab] = useState<TabId>("trips");
-  const card = COMING[tab];
-  const label = TABS.find((t) => t.id === tab)?.label;
+  const auth = useAuth();
+
+  if (auth.status === "loading") return <div className="h-full bg-bg" />;
+  if (auth.status === "unconfigured") return <SetupNeeded />;
+  if (auth.status === "signedOut") return <SignIn />;
+  return <SignedIn email={auth.email} />;
+}
+
+function SignedIn({ email }: { email: string }) {
+  const trips = useTrips(email);
+  const [tab, setTab] = useState<TabId>(() => (prefs.activeTrip() ? "plan" : "trips"));
+  const [activeId, setActiveId] = useState<string | null>(() => prefs.activeTrip());
+
+  // A trip deleted on the other phone (or never synced here) just isn't open.
+  const active = trips.trips.find((t) => t.id === activeId) ?? null;
+
+  function open(id: string | null) {
+    setActiveId(id);
+    prefs.setActiveTrip(id);
+  }
+
+  const heading = tab === "plan" && active ? active.title : "Sidequest";
+  const coming = COMING[tab];
 
   return (
     <div className="flex h-full flex-col">
       <header className="pt-safe border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-xl items-end justify-between px-4 pb-3 pt-3">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">Sidequest</h1>
+        <div className="mx-auto flex max-w-xl items-center justify-between gap-3 px-4 pb-3 pt-3">
+          <div className="min-w-0">
+            <h1 className="truncate text-xl font-bold tracking-tight">{heading}</h1>
             <StatusLine />
           </div>
-          <span className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent">{label}</span>
+          <AccountMenu email={email} trips={trips.trips} />
         </div>
       </header>
 
       <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-xl px-4 py-6">
-          <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
-            <h2 className="text-lg font-semibold">{card.title}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">{card.body}</p>
-            <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted">Coming in</p>
-            <ul className="mt-2 space-y-1.5">
-              {card.steps.map((s) => (
-                <li key={s} className="flex items-center gap-2 text-sm">
-                  <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
-                  {s}
-                </li>
-              ))}
-            </ul>
-          </section>
-          <p className="mt-6 text-center text-xs text-muted">
-            Add Sidequest to your home screen so it opens without signal.
-          </p>
+        <div className="mx-auto max-w-xl px-4 py-5">
+          {tab === "trips" && (
+            <TripsView
+              email={email}
+              state={trips}
+              activeId={activeId}
+              onOpen={(id) => {
+                open(id);
+                setTab("plan");
+              }}
+            />
+          )}
+          {tab === "plan" &&
+            (trips.status === "loading" ? (
+              <p className="py-6 text-center text-sm text-muted">Loading...</p>
+            ) : (
+              <PlanView
+                trip={active}
+                onDeleted={() => {
+                  open(null);
+                  setTab("trips");
+                }}
+              />
+            ))}
+          {coming && <Notice title={coming.title}>{coming.body}</Notice>}
         </div>
       </main>
 
