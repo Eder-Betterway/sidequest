@@ -1,0 +1,44 @@
+name: Bug
+description: Something broke or looks wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: This repo is public. Leave out real trip details, names, and anything private.
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to make it happen again
+      placeholder: |
+        1. Open the Plan tab
+        2. Tap a day
+        3. ...
+  - type: dropdown
+    id: phone
+    attributes:
+      label: Phone
+      options: [iPhone, Android, Computer]
+  - type: dropdown
+    id: how
+    attributes:
+      label: Opened from
+      options: [Home-screen app, Browser, Preview link]
+  - type: dropdown
+    id: signal
+    attributes:
+      label: Signal
+      options: [Online, Offline or weak signal, Not sure]
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot (optional)

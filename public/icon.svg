@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#d9480f"/>
+  <!-- A winding trail between two waypoints: the main road and the detour. -->
+  <path d="M150 380 C 150 290, 250 300, 256 236 S 360 180, 362 132"
+        fill="none" stroke="#fde8dc" stroke-width="30" stroke-linecap="round"
+        stroke-dasharray="2 54"/>
+  <circle cx="150" cy="380" r="34" fill="#fff"/>
+  <path d="M362 70 c-38 0-62 28-62 60 0 44 62 102 62 102 s62-58 62-102 c0-32-24-60-62-60z"
+        fill="#fff"/>
+  <circle cx="362" cy="130" r="22" fill="#d9480f"/>
+</svg>

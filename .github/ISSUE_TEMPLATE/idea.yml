@@ -1,0 +1,31 @@
+name: Idea
+description: Something new or better for Sidequest
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This repo is public. Describe things generally ("a campsite", "the wedding day"), never real dates, addresses, bookings, or names.
+        When it's ready to build, comment `@claude please build this`.
+  - type: textarea
+    id: what
+    attributes:
+      label: What should it do?
+      placeholder: Show the sunset time on each day card.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why?
+      placeholder: We keep checking a separate app to plan evening hikes.
+  - type: input
+    id: where
+    attributes:
+      label: Where in the app?
+      placeholder: Plan tab, day cards
+  - type: textarea
+    id: done
+    attributes:
+      label: What does "done" look like?
+      placeholder: Each day card shows "Sunset 7:42pm" in the local time zone, offline too.
