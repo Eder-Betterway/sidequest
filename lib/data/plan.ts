@@ -1,10 +1,12 @@
 "use client";
 
-import { collection, doc, orderBy, setDoc, updateDoc, deleteDoc, writeBatch, type FirestoreError } from "firebase/firestore";
+import { collection, deleteField, doc, orderBy, setDoc, updateDoc, deleteDoc, where, writeBatch, type FirestoreError } from "firebase/firestore";
 import { getFirebase } from "@/lib/firebase/client";
 import type { TripInputs } from "@/lib/model/inputs";
 import type { Place, PlanItemDraft, StoredDay, StoredItem, StoredOption, TripOption } from "@/lib/model/plan";
 import type { PinnedItem } from "@/lib/plan/schedule";
+import { planWrites, type Proposal, type ProposalOp } from "@/lib/plan/proposal";
+import type { Vibe, VibeOverride } from "@/lib/plan/vibe";
 import type { Usage } from "@/lib/ai/claude";
 import { watchCollection } from "./watch";
 
@@ -72,6 +74,7 @@ export function replacePlan(
   optionId: string,
   days: ExpandedDay[],
   old: { dayIds: string[]; itemIds: string[] },
+  plannedVibe: Vibe,
   me: string
 ) {
   const d = db();
@@ -80,7 +83,7 @@ export function replacePlan(
   for (const id of old.dayIds) batch.delete(doc(d, "trips", tripId, "days", id));
   const now = Date.now();
   for (const day of days) {
-    const stored: StoredDay = { date: day.date, base: day.base, title: day.title, place: day.place, updatedAt: now };
+    const stored: StoredDay = { date: day.date, base: day.base, title: day.title, place: day.place, updatedAt: now, plannedVibe };
     batch.set(doc(d, "trips", tripId, "days", day.date), stored);
     day.items.forEach((it, order) => {
       const ref = doc(collection(d, "trips", tripId, "items"));
@@ -151,4 +154,75 @@ export function deleteTripWithPlan(
   for (const id of ids.optionIds) batch.delete(doc(d, "trips", tripId, "options", id));
   batch.delete(doc(d, "trips", tripId));
   batch.commit().catch(fail("deleting the trip"));
+}
+
+// ---------- Vibe ----------
+
+export function setTripVibe(tripId: string, vibe: Vibe) {
+  updateDoc(doc(db(), "trips", tripId), { "inputs.vibe": vibe, updatedAt: Date.now() }).catch(fail("saving the trip vibe"));
+}
+
+/** Set this day's overrides, or null to follow the trip's vibe again. */
+export function setDayVibe(tripId: string, date: string, override: VibeOverride | null) {
+  updateDoc(doc(db(), "trips", tripId, "days", date), {
+    vibe: override ?? deleteField(),
+    updatedAt: Date.now(),
+  }).catch(fail("saving the day's vibe"));
+}
+
+// ---------- Proposals ----------
+
+export function watchProposals(tripId: string, onData: (rows: (Proposal & { pending: boolean })[]) => void, onError?: OnError) {
+  return watchCollection<Proposal>(`trips/${tripId}/proposals`, `proposals-${tripId}`, [where("status", "==", "pending")], onData, onError);
+}
+
+/** Save a suggestion for a day, replacing any earlier pending one for that day. */
+export function saveProposal(tripId: string, p: Omit<Proposal, "id" | "status">, previous: string[]): void {
+  const batch = writeBatch(db());
+  for (const id of previous) batch.update(doc(db(), "trips", tripId, "proposals", id), { status: "dismissed" });
+  batch.set(doc(collection(db(), "trips", tripId, "proposals")), { ...p, status: "pending" });
+  batch.commit().catch(fail("saving the suggestion"));
+}
+
+export function dismissProposal(tripId: string, id: string) {
+  updateDoc(doc(db(), "trips", tripId, "proposals", id), { status: "dismissed" }).catch(fail("dismissing the suggestion"));
+}
+
+/**
+ * Apply the changes the user kept, in one batch (transactions fail offline).
+ * Locked items are skipped no matter what the proposal says.
+ */
+export function acceptProposal(
+  tripId: string,
+  proposal: Proposal,
+  keep: Set<string>,
+  dayItems: StoredItem[],
+  plannedVibe: Vibe,
+  me: string
+) {
+  const d = db();
+  const batch = writeBatch(d);
+  const now = Date.now();
+  for (const w of planWrites(proposal.ops as ProposalOp[], keep, dayItems)) {
+    if (w.type === "add") {
+      const item: Omit<StoredItem, "id"> = {
+        ...w.item,
+        dayDate: proposal.dayDate,
+        order: w.order,
+        locked: false,
+        source: "ai",
+        milestoneId: null,
+        updatedAt: now,
+        updatedBy: me,
+      };
+      batch.set(doc(collection(d, "trips", tripId, "items")), item);
+    } else if (w.type === "update") {
+      batch.update(doc(d, "trips", tripId, "items", w.itemId), { ...w.patch, updatedAt: now, updatedBy: me });
+    } else {
+      batch.delete(doc(d, "trips", tripId, "items", w.itemId));
+    }
+  }
+  batch.update(doc(d, "trips", tripId, "proposals", proposal.id), { status: "accepted" });
+  batch.update(doc(d, "trips", tripId, "days", proposal.dayDate), { plannedVibe, updatedAt: now });
+  batch.commit().catch(fail("applying the suggestion"));
 }

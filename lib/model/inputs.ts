@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NEUTRAL, VibeSchema } from "@/lib/plan/vibe";
 
 /**
  * Everything the trip wizard asks, stored on the trip as `inputs`. All fields
@@ -100,6 +101,8 @@ export const TripInputsSchema = z.object({
   weather: z.string().max(200).default(""),
   alreadyBooked: z.string().max(500).default(""),
   surpriseMe: z.boolean().default(false),
+  /** The trip's vibe dials (lib/plan/vibe.ts). Days can override them. */
+  vibe: VibeSchema.default(NEUTRAL),
   units: z.enum(["imperial", "metric"]).default("imperial"),
   homeCurrency: z.string().length(3).default("USD"),
   extraNotes: z.string().max(1000).default(""),

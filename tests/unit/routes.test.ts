@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { POST as options } from "@/app/api/ai/options/route";
 import { POST as expand } from "@/app/api/ai/expand/route";
+import { POST as replan } from "@/app/api/ai/replan/route";
 import { defaultInputs, MilestoneSchema } from "@/lib/model/inputs";
 
 // Unsigned tokens like the Firebase Auth emulator issues; the guard accepts
@@ -68,5 +69,28 @@ describe("POST /api/ai/expand", () => {
     expect(days[0].place).toMatchObject({ timezone: "America/Denver" });
     const pinned = days[2].items.find((i: { milestoneId: string | null }) => i.milestoneId === "m1");
     expect(pinned).toMatchObject({ locked: true, kind: "milestone", start: "16:00" });
+  });
+});
+
+describe("POST /api/ai/replan", () => {
+  const day = { date: "2026-10-03", base: "Moab, Utah", title: "Big day" };
+  const items = [
+    { kind: "activity", title: "Morning hike", start: "08:00", end: "10:00", place: null, notes: "", locked: false },
+    { kind: "milestone", title: "Wedding", start: "16:00", end: null, place: null, notes: "", locked: true },
+  ];
+
+  it("never returns locked items", async () => {
+    const vibe = { pace: 10, effort: 50, path: 50, nights: 50 };
+    const res = await replan(post({ trip, inputs, day, items, vibe, today: "2026-09-20" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.items.map((i: { title: string }) => i.title)).not.toContain("Wedding");
+    expect(body.summary).toMatch(/Slowed/);
+  });
+
+  it("guards and validates like the others", async () => {
+    const vibe = { pace: 10, effort: 50, path: 50, nights: 50 };
+    expect((await replan(post({ trip, inputs, day, items, vibe, today: "2026-09-20" }, null))).status).toBe(401);
+    expect((await replan(post({ trip, inputs, day, items, vibe: { pace: 400 }, today: "2026-09-20" }))).status).toBe(400);
   });
 });

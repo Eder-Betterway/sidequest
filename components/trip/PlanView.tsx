@@ -9,6 +9,7 @@ import TripWizard from "@/components/plan/TripWizard";
 import OptionsView from "@/components/plan/OptionsView";
 import DayPlan from "@/components/plan/DayPlan";
 import { usePlan } from "@/components/plan/usePlan";
+import TripVibeSheet from "@/components/plan/TripVibeSheet";
 import { Notice } from "./TripsView";
 
 /** The open trip: its day plan once there is one, otherwise the options to build it from. */
@@ -32,6 +33,7 @@ function OpenTrip({ trip, email, onDeleted }: { trip: Trip; email: string; onDel
   const plan = usePlan(trip.id);
   const inputs = readInputs(trip.inputs);
   const [wizard, setWizard] = useState(false);
+  const [vibeOpen, setVibeOpen] = useState(false);
   const [view, setView] = useState<"days" | "options">("days");
   const [confirming, setConfirming] = useState(false);
 
@@ -42,9 +44,16 @@ function OpenTrip({ trip, email, onDeleted }: { trip: Trip; email: string; onDel
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted">{formatTripDates(trip.startDate, trip.endDate)}</p>
-        <button type="button" onClick={() => setWizard(true)} className="min-h-11 text-sm font-medium text-accent">
-          Trip details
-        </button>
+        <div className="flex gap-4">
+          {hasDays && (
+            <button type="button" onClick={() => setVibeOpen(true)} className="min-h-11 text-sm font-medium text-accent">
+              Trip vibe
+            </button>
+          )}
+          <button type="button" onClick={() => setWizard(true)} className="min-h-11 text-sm font-medium text-accent">
+            Trip details
+          </button>
+        </div>
       </div>
 
       {hasDays && (
@@ -59,7 +68,7 @@ function OpenTrip({ trip, email, onDeleted }: { trip: Trip; email: string; onDel
       {!plan.loaded ? (
         <p className="py-6 text-center text-sm text-muted">Loading the plan...</p>
       ) : showing === "days" ? (
-        <DayPlan tripId={trip.id} plan={plan} units={inputs.units} email={email} />
+        <DayPlan trip={trip} inputs={inputs} plan={plan} email={email} />
       ) : (
         <OptionsView
           trip={trip}
@@ -103,6 +112,7 @@ function OpenTrip({ trip, email, onDeleted }: { trip: Trip; email: string; onDel
       </div>
 
       {wizard && <TripWizard trip={trip} initial={inputs} onClose={() => setWizard(false)} />}
+      {vibeOpen && <TripVibeSheet trip={trip} inputs={inputs} plan={plan} email={email} onClose={() => setVibeOpen(false)} />}
     </div>
   );
 }

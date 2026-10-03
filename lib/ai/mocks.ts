@@ -1,5 +1,5 @@
 import { dayCount, type TripInputs } from "@/lib/model/inputs";
-import type { DayDraft, TripOption } from "@/lib/model/plan";
+import type { DayDraft, PlanItemDraft, TripOption } from "@/lib/model/plan";
 
 /**
  * Stand-in AI answers for tests and local dev (AI_MOCK=1). Deterministic and
@@ -49,4 +49,31 @@ export function mockDays(dates: { date: string; stop: string }[]): DayDraft[] {
       { kind: "activity", title: "Sunset viewpoint", start: "18:30", end: "19:30", place: stop, notes: "" },
     ],
   }));
+}
+
+/**
+ * Re-plan stand-in: chill days drop the busiest unlocked item and add open
+ * time; packed days add an outing. Locked items are never returned.
+ */
+export function mockReplan(
+  items: (PlanItemDraft & { locked: boolean })[],
+  vibe: { pace: number }
+): { summary: string; items: PlanItemDraft[] } {
+  const unlocked: PlanItemDraft[] = items
+    .filter((i) => !i.locked)
+    .map((i) => ({ kind: i.kind, title: i.title, start: i.start, end: i.end, place: i.place, notes: i.notes }));
+  if (vibe.pace < 40) {
+    const kept = unlocked.filter((i) => i.kind !== "activity" || i.title.toLowerCase().includes("sunset"));
+    return {
+      summary: "Slowed the day down: dropped the morning outing and left the afternoon open.",
+      items: [...kept, { kind: "free", title: "Slow morning at camp", start: "08:00", end: "10:30", place: null, notes: "" }],
+    };
+  }
+  if (vibe.pace > 60) {
+    return {
+      summary: "Filled the day out with an extra outing.",
+      items: [...unlocked, { kind: "activity", title: "Afternoon scenic drive", start: "15:00", end: "17:00", place: null, notes: "" }],
+    };
+  }
+  return { summary: "This day already fits the vibe.", items: unlocked };
 }

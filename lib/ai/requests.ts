@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TripInputsSchema } from "@/lib/model/inputs";
-import { OptionSchema } from "@/lib/model/plan";
+import { OptionSchema, PlanItemSchema } from "@/lib/model/plan";
+import { VibeSchema } from "@/lib/plan/vibe";
 
 /** Request bodies the AI routes accept. Validated before anything is spent. */
 
@@ -22,6 +23,17 @@ export const ExpandRequestSchema = z.object({
   trip: TripBriefSchema,
   inputs: TripInputsSchema,
   option: OptionSchema,
+  today: ISO,
+});
+
+export const ReplanRequestSchema = z.object({
+  trip: TripBriefSchema,
+  inputs: TripInputsSchema,
+  day: z.object({ date: ISO, base: z.string().max(200), title: z.string().max(200) }),
+  items: z.array(PlanItemSchema.extend({ locked: z.boolean() })).max(40),
+  vibe: VibeSchema,
+  /** Extra instruction, like a tip from a local. */
+  note: z.string().max(1000).nullable().default(null),
   today: ISO,
 });
 

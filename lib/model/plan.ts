@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Vibe, VibeOverride } from "@/lib/plan/vibe";
 
 /**
  * The plan: options to pick from, then days with items. These schemas double
@@ -61,6 +62,11 @@ export const DayDraftSchema = z.object({
 });
 export type DayDraft = z.infer<typeof DayDraftSchema>;
 
+export const ReplanResultSchema = z.object({
+  summary: z.string().describe("One or two plain sentences on what changed and why"),
+  items: z.array(PlanItemSchema).describe("The day's complete set of unlocked items, in time order"),
+});
+
 export const DaysResultSchema = z.object({
   days: z.array(DayDraftSchema),
 });
@@ -79,6 +85,10 @@ export interface StoredDay {
   title: string;
   place: Place | null;
   updatedAt: number;
+  /** This day's dial overrides, if any. */
+  vibe?: VibeOverride;
+  /** The vibe the day was last planned with, to notice when the dials moved. */
+  plannedVibe?: Vibe;
 }
 
 /** Stored item (`trips/{id}/items/{itemId}`). One record per item so two phones can edit a day offline. */

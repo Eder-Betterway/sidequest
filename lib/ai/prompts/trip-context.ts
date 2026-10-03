@@ -1,4 +1,5 @@
 import { dayCount, type TripInputs } from "@/lib/model/inputs";
+import { describeVibe } from "@/lib/plan/vibe";
 
 /**
  * Turns a trip's dates and wizard answers into a plain-language brief for
@@ -65,6 +66,7 @@ export function describeTrip(
     }
   }
   add("Shared interests", inputs.sharedInterests.join(", "));
+  add("Trip vibe", describeVibe(inputs.vibe));
   add("Budget", inputs.budget);
   add("Lodging they like", inputs.lodging.join(", "));
   add("Mornings", inputs.wakeStyle === "normal" ? null : inputs.wakeStyle === "sunrise" ? "sunrise people, early starts welcome" : "like to sleep in");

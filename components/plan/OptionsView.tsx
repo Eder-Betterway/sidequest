@@ -63,7 +63,14 @@ export default function OptionsView({
     });
     setBusy(null);
     if (!res.ok) return setError(res.error);
-    replacePlan(trip.id, option.id, res.data.days, { dayIds: plan.days.map((d) => d.id), itemIds: plan.items.map((i) => i.id) }, email);
+    replacePlan(
+      trip.id,
+      option.id,
+      res.data.days,
+      { dayIds: plan.days.map((d) => d.id), itemIds: plan.items.map((i) => i.id) },
+      inputs.vibe,
+      email
+    );
     logAiRun(trip.id, "expand", res.data.usage, email);
     onPlanned();
   }

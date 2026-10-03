@@ -6,7 +6,10 @@ import { Field, inputClass, TextArea } from "@/components/ui/fields";
 import { addItem, deleteItem, swapOrder, updateItem } from "@/lib/data/plan";
 import { sunTimes } from "@/lib/grounding/sun";
 import { formatTime, ITEM_KINDS, sortItems, type ItemKind, type StoredItem } from "@/lib/model/plan";
+import type { TripInputs } from "@/lib/model/inputs";
+import type { Trip } from "@/lib/model/trip";
 import type { PlanState } from "./usePlan";
+import DayTuner from "./DayTuner";
 
 const KIND_ICON: Record<ItemKind, string> = {
   activity: "●",
@@ -29,16 +32,18 @@ function dayLabel(iso: string) {
 
 /** The day-by-day plan: pick a day, see its timeline, lock or edit anything. */
 export default function DayPlan({
-  tripId,
+  trip,
+  inputs,
   plan,
-  units,
   email,
 }: {
-  tripId: string;
+  trip: Trip;
+  inputs: TripInputs;
   plan: PlanState;
-  units: "imperial" | "metric";
   email: string;
 }) {
+  const tripId = trip.id;
+  const units = inputs.units;
   const [selected, setSelected] = useState<string>(() => {
     const today = new Date().toISOString().slice(0, 10);
     const dates = plan.days.map((d) => d.date);
@@ -104,6 +109,15 @@ export default function DayPlan({
         ) : (
           <p className="mt-2 text-xs text-muted">Sun times appear once this stop has a location.</p>
         )}
+        <DayTuner
+          key={day.date}
+          trip={trip}
+          inputs={inputs}
+          day={day}
+          dayItems={items}
+          proposals={plan.proposals}
+          email={email}
+        />
       </section>
 
       <ol className="space-y-2">
