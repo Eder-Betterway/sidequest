@@ -20,7 +20,8 @@ export default function Sheet({
 
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center" role="dialog" aria-modal="true" aria-label={title}>
-      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/40" />
+      {/* Tapping the dimmed backdrop closes too; the labeled Close button is the accessible way. */}
+      <button type="button" aria-hidden="true" tabIndex={-1} onClick={onClose} className="absolute inset-0 bg-black/40" />
       <div className="pb-safe relative max-h-[90%] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-surface shadow-xl">
         <div className="sticky top-0 flex items-center justify-between border-b border-border bg-surface px-5 py-3">
           <h2 className="text-lg font-semibold">{title}</h2>

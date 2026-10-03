@@ -39,7 +39,7 @@ export function getFirebase(): Firebase | null {
 
   if (USE_EMULATORS) {
     connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
-    connectFirestoreEmulator(db, "127.0.0.1", 8080);
+    connectFirestoreEmulator(db, "127.0.0.1", 8180);
   }
 
   // Ask the browser not to clear our offline copy when space runs low.

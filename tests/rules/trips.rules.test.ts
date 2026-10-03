@@ -31,7 +31,7 @@ const as = (email: string) => env.authenticatedContext(email.split("@")[0], { em
 beforeAll(async () => {
   env = await initializeTestEnvironment({
     projectId: "demo-sidequest-rules",
-    firestore: { rules: readFileSync("firestore.rules", "utf8"), host: "127.0.0.1", port: 8080 },
+    firestore: { rules: readFileSync("firestore.rules", "utf8"), host: "127.0.0.1", port: 8180 },
   });
 });
 

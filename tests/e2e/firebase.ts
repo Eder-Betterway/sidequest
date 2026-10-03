@@ -4,7 +4,7 @@ import { expect } from "@playwright/test";
 
 const PROJECT = "demo-sidequest";
 const AUTH = "http://127.0.0.1:9099";
-const FIRESTORE = "http://127.0.0.1:8080";
+const FIRESTORE = "http://127.0.0.1:8180";
 
 export const PASSWORD = "test-password-123";
 export const TESTER = "tester@example.com";

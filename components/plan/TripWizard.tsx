@@ -16,6 +16,7 @@ import {
   type TripInputs,
 } from "@/lib/model/inputs";
 import type { Trip } from "@/lib/model/trip";
+import VibeDials from "./VibeDials";
 
 const STEPS = ["When and where", "Must-dos", "Getting around", "What you're into", "The rest"] as const;
 
@@ -163,6 +164,10 @@ export default function TripWizard({
               </section>
             ))}
             <TextArea label="Photo goals" value={inputs.photoGoals} onChange={(v) => set("photoGoals", v)} placeholder="Golden hour, dark skies, wildlife" />
+            <section className="rounded-2xl border border-border p-4">
+              <p className="mb-3 text-sm font-semibold">Trip vibe</p>
+              <VibeDials value={inputs.vibe} onChange={(k, v) => set("vibe", { ...inputs.vibe, [k]: v })} idPrefix="wizard" />
+            </section>
           </>
         )}
 
