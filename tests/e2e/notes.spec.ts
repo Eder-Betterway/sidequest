@@ -39,10 +39,10 @@ test("a question asked with no signal gets answered once you're back online", as
   await signIn(page, TESTER);
   await plannedTrip(page, "Question trip");
   await expect(page.getByTestId("status-line")).toContainText("Synced");
-  await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Ask" }).click();
+  await page.getByRole("button", { name: "Notes", exact: true }).click();
 
   await context.setOffline(true);
-  await page.getByRole("button", { name: "Ask a question" }).click();
+  await page.getByRole("button", { name: "Question", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Ask a question" });
   await sheet.getByLabel("Your question").fill("Can we park the van overnight at the trailhead?");
   await sheet.getByRole("button", { name: "Ask", exact: true }).click();

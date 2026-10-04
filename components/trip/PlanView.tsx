@@ -11,41 +11,57 @@ import DayPlan from "@/components/plan/DayPlan";
 import { usePlan } from "@/components/plan/usePlan";
 import { useNotes } from "@/components/notes/useNotes";
 import { useDrafts } from "@/components/plan/useDrafts";
+import { useHistory } from "@/components/plan/useHistory";
 import TripVibeSheet from "@/components/plan/TripVibeSheet";
 import Itinerary from "@/components/plan/Itinerary";
 import ChangeSheet from "@/components/plan/ChangeSheet";
 import TripProposalSheet from "@/components/plan/TripProposalSheet";
 import { acceptTripProposal, dismissTripProposal } from "@/lib/data/plan";
-import { Notice } from "./TripsView";
+import { offerUndo } from "@/components/plan/undo";
+import { Notice } from "@/components/ui/Notice";
 
 /** The open trip: its day plan once there is one, otherwise the options to build it from. */
 export default function PlanView({
   trip,
   email,
+  initialDay = null,
   onDeleted,
 }: {
   trip: Trip | null;
   email: string;
+  /** Open on this day (from Today) instead of the itinerary. */
+  initialDay?: string | null;
   onDeleted: () => void;
 }) {
   if (!trip) {
-    return <Notice title="No trip open">Pick a trip on the Trips tab, or start a new one.</Notice>;
+    return <Notice title="No trip open">Pick a trip from the name at the top, or start a new one.</Notice>;
   }
   // Keyed so switching trips resets everything inside.
-  return <OpenTrip key={trip.id} trip={trip} email={email} onDeleted={onDeleted} />;
+  return <OpenTrip key={trip.id} trip={trip} email={email} initialDay={initialDay} onDeleted={onDeleted} />;
 }
 
 type View = "itinerary" | "days" | "options";
 
-function OpenTrip({ trip, email, onDeleted }: { trip: Trip; email: string; onDeleted: () => void }) {
+function OpenTrip({
+  trip,
+  email,
+  initialDay,
+  onDeleted,
+}: {
+  trip: Trip;
+  email: string;
+  initialDay: string | null;
+  onDeleted: () => void;
+}) {
   const plan = usePlan(trip.id);
   const { notes } = useNotes(trip.id);
   const drafts = useDrafts(trip.id);
   const inputs = readInputs(trip.inputs);
   const [wizard, setWizard] = useState(false);
   const [vibeOpen, setVibeOpen] = useState(false);
-  const [view, setView] = useState<View>("itinerary");
-  const [selected, setSelected] = useState<string | null>(null);
+  const [view, setView] = useState<View>(initialDay ? "days" : "itinerary");
+  const [selected, setSelected] = useState<string | null>(initialDay);
+  const history = useHistory(trip.id);
   const [changing, setChanging] = useState<{ focusDate: string | null } | null>(null);
   const [reviewingTrip, setReviewingTrip] = useState(false);
   const tripProposal = plan.tripProposals[plan.tripProposals.length - 1];
@@ -99,6 +115,7 @@ function OpenTrip({ trip, email, onDeleted }: { trip: Trip; email: string; onDel
           plan={plan}
           notes={notes}
           drafts={drafts}
+          history={history}
           email={email}
           onOpenDay={(date) => {
             setSelected(date);
@@ -190,7 +207,7 @@ function OpenTrip({ trip, email, onDeleted }: { trip: Trip; email: string; onDel
             setReviewingTrip(false);
           }}
           onApply={(keep) => {
-            acceptTripProposal(trip.id, tripProposal, keep, plan.items, email);
+            offerUndo(trip.id, acceptTripProposal(trip.id, tripProposal, keep, plan.items, plan.days, email), email);
             setReviewingTrip(false);
           }}
         />

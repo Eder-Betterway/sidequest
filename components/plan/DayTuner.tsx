@@ -11,6 +11,7 @@ import { useOnline } from "@/components/shell/useOnline";
 import VibeDials from "./VibeDials";
 import ProposalSheet from "./ProposalSheet";
 import { replanDay } from "./replan";
+import { offerUndo } from "./undo";
 
 /**
  * Under each day's header: tune this day's vibe, re-plan it, and review the
@@ -26,7 +27,7 @@ export default function DayTuner({
 }: {
   trip: Trip;
   inputs: TripInputs;
-  day: StoredDay;
+  day: StoredDay & { id: string };
   dayItems: StoredItem[];
   proposals: Proposal[];
   email: string;
@@ -140,7 +141,7 @@ export default function DayTuner({
             setReviewing(false);
           }}
           onApply={(keep) => {
-            acceptProposal(trip.id, latest, keep, dayItems, vibe, email);
+            offerUndo(trip.id, acceptProposal(trip.id, latest, keep, dayItems, day, vibe, email), email);
             setReviewing(false);
           }}
         />

@@ -1,13 +1,16 @@
 "use client";
 
-export type TabId = "trips" | "plan" | "notes" | "ask";
+export type TabId = "today" | "plan" | "notes";
 
 export const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   {
-    id: "trips",
-    label: "Trips",
+    id: "today",
+    label: "Today",
     icon: (
-      <path d="M4 19c0-5 4-6 8-9s5-6 8-6M4 19h4M18 4h2v2" strokeLinecap="round" strokeLinejoin="round" />
+      <>
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" strokeLinecap="round" />
+      </>
     ),
   },
   {
@@ -24,16 +27,6 @@ export const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
     id: "notes",
     label: "Notes",
     icon: <path d="M6 4h9l3 3v13H6zM9 10h6M9 14h6M9 18h3" strokeLinecap="round" strokeLinejoin="round" />,
-  },
-  {
-    id: "ask",
-    label: "Ask",
-    icon: (
-      <path
-        d="M5 18l-1 3 4-2c1.2.6 2.6 1 4 1 4.4 0 8-3.1 8-7s-3.6-7-8-7-8 3.1-8 7c0 1.8.7 3.5 2 4.8z"
-        strokeLinejoin="round"
-      />
-    ),
   },
 ];
 

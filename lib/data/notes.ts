@@ -7,6 +7,8 @@ import type { FlyerEvent, NoteAnswer, NoteDoc } from "@/lib/model/note";
 import type { Usage } from "@/lib/ai/claude";
 import { logAiRun } from "./plan";
 import { watchCollection } from "./watch";
+import { recordInBatch } from "./history";
+import type { HistoryEntry } from "@/lib/model/history";
 
 /**
  * Notes, tips, questions, and flyers for a trip (`trips/{id}/notes`). Writes
@@ -65,11 +67,12 @@ export function addFlyerEventsToPlan(
   picks: { dayDate: string; item: PlanItemDraft }[],
   items: Pick<StoredItem, "dayDate" | "order">[],
   me: string
-) {
+): HistoryEntry {
   const d = db();
   const batch = writeBatch(d);
   const now = Date.now();
   const next = new Map<string, number>();
+  const addedIds: string[] = [];
   for (const { dayDate, item } of picks) {
     const order = next.get(dayDate) ?? items.filter((i) => i.dayDate === dayDate).reduce((m, i) => Math.max(m, i.order), -1) + 1;
     next.set(dayDate, order + 1);
@@ -83,8 +86,19 @@ export function addFlyerEventsToPlan(
       updatedAt: now,
       updatedBy: me,
     };
-    batch.set(doc(collection(d, "trips", tripId, "items")), stored);
+    const ref = doc(collection(d, "trips", tripId, "items"));
+    addedIds.push(ref.id);
+    batch.set(ref, stored);
   }
   batch.update(doc(d, "trips", tripId, "notes", noteId), { usedAt: now, updatedAt: now });
+  const entry = recordInBatch(batch, tripId, {
+    kind: "flyer",
+    label: `Added ${picks.length} event${picks.length === 1 ? "" : "s"} from a flyer`,
+    dayDates: [...new Set(picks.map((p) => p.dayDate))],
+    by: me,
+    at: now,
+    undo: { addedIds, items: [], days: [] },
+  });
   batch.commit().catch(fail("adding flyer events to the plan"));
+  return entry;
 }
