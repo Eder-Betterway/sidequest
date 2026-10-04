@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { watchDays, watchItems, watchOptions, watchProposals } from "@/lib/data/plan";
+import { watchDays, watchItems, watchOptions, watchProposals, watchTripProposals } from "@/lib/data/plan";
+import type { TripProposal } from "@/lib/plan/tripProposal";
 import type { Proposal } from "@/lib/plan/proposal";
 import type { StoredDay, StoredItem, StoredOption } from "@/lib/model/plan";
 
@@ -12,6 +13,8 @@ export interface PlanState {
   items: (StoredItem & { pending: boolean })[];
   /** Pending suggestions, newest last. */
   proposals: (Proposal & { pending: boolean })[];
+  /** Pending trip-wide suggestions, newest last. */
+  tripProposals: (TripProposal & { pending: boolean })[];
 }
 
 /** Live options, days, and items for one trip. Works offline from the phone's copy. */
@@ -20,6 +23,7 @@ export function usePlan(tripId: string): PlanState {
   const [days, setDays] = useState<PlanState["days"] | null>(null);
   const [items, setItems] = useState<PlanState["items"] | null>(null);
   const [proposals, setProposals] = useState<PlanState["proposals"]>([]);
+  const [tripProposals, setTripProposals] = useState<PlanState["tripProposals"]>([]);
 
   useEffect(() => {
     // A brand-new trip may not be readable until it reaches the server; show it
@@ -30,6 +34,7 @@ export function usePlan(tripId: string): PlanState {
       watchDays(tripId, setDays, empty(setDays)),
       watchItems(tripId, setItems, empty(setItems)),
       watchProposals(tripId, (rows) => setProposals([...rows].sort((a, b) => a.createdAt - b.createdAt))),
+      watchTripProposals(tripId, (rows) => setTripProposals([...rows].sort((a, b) => a.createdAt - b.createdAt))),
     ];
     return () => stops.forEach((s) => s());
   }, [tripId]);
@@ -40,5 +45,6 @@ export function usePlan(tripId: string): PlanState {
     days: days ?? [],
     items: items ?? [],
     proposals,
+    tripProposals,
   };
 }

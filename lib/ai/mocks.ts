@@ -166,3 +166,30 @@ export function mockSpots(c: { lat: number; lng: number }): VanSpot[] {
     { id: "node/3", kind: "dump", name: "Gas station dump", lat: c.lat, lng: c.lng + 0.02, km: 1.8, fee: true, maxLengthM: null, url: null, facts: ["Water too"] },
   ];
 }
+
+// ---------- Trip change stand-in ----------
+
+/**
+ * "Stay on" stand-in: the asked-about day (or the last day) moves to Palm
+ * Springs and gains one item; its unlocked items stay as they were.
+ */
+export function mockReroute(
+  days: { date: string; base: string; items: (PlanItemDraft & { locked: boolean })[] }[],
+  focusDate: string | null
+): { summary: string; days: DayDraft[] } {
+  const target = days.find((d) => d.date === focusDate) ?? days[days.length - 1];
+  const kept: PlanItemDraft[] = target.items
+    .filter((i) => !i.locked)
+    .map((i) => ({ kind: i.kind, title: i.title, start: i.start, end: i.end, place: i.place, notes: i.notes }));
+  return {
+    summary: "Stayed on in Palm Springs for the wedding and pushed the next stop back a day.",
+    days: [
+      {
+        date: target.date,
+        base: "Palm Springs",
+        title: "Staying on in Palm Springs",
+        items: [...kept, { kind: "activity", title: "Pool afternoon before the wedding", start: "14:00", end: "16:00", place: "Palm Springs", notes: "" }],
+      },
+    ],
+  };
+}

@@ -67,6 +67,13 @@ export const ReplanResultSchema = z.object({
   items: z.array(PlanItemSchema).describe("The day's complete set of unlocked items, in time order"),
 });
 
+export const RerouteResultSchema = z.object({
+  summary: z.string().describe("One to three plain sentences on what changed across the trip and why"),
+  days: z
+    .array(DayDraftSchema)
+    .describe("ONLY the days that change. Each is complete: its base, title, and every unlocked item for that day, in time order"),
+});
+
 export const DaysResultSchema = z.object({
   days: z.array(DayDraftSchema),
 });

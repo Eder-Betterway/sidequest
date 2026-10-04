@@ -83,7 +83,7 @@ export default function ProposalSheet({
   );
 }
 
-function OpLine({ op, units }: { op: ProposalOp; units: "imperial" | "metric" }) {
+export function OpLine({ op, units }: { op: ProposalOp; units: "imperial" | "metric" }) {
   const when = (s: string | null) => (s ? formatTime(s, units) : "any time");
   if (op.op === "add") {
     return (

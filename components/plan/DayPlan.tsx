@@ -42,19 +42,24 @@ export default function DayPlan({
   inputs,
   plan,
   email,
+  selected: selectedProp,
+  onSelect,
+  onChangeDay,
 }: {
   trip: Trip;
   inputs: TripInputs;
   plan: PlanState;
   email: string;
+  /** The open day, kept by the parent so the itinerary can open a day. Null: today if it's on the trip, else day 1. */
+  selected: string | null;
+  onSelect: (date: string) => void;
+  onChangeDay: (date: string) => void;
 }) {
   const tripId = trip.id;
   const units = inputs.units;
-  const [selected, setSelected] = useState<string>(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    const dates = plan.days.map((d) => d.date);
-    return dates.includes(today) ? today : dates[0];
-  });
+  const [today] = useState(() => new Date().toISOString().slice(0, 10));
+  const selected = selectedProp ?? (plan.days.some((d) => d.date === today) ? today : plan.days[0]?.date);
+  const setSelected = onSelect;
   const [editing, setEditing] = useState<StoredItem | "new" | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [vanOpen, setVanOpen] = useState(false);
@@ -228,9 +233,14 @@ export default function DayPlan({
       >
         + Add to this day
       </button>
-      <button type="button" onClick={() => setCapturing(true)} className="min-h-11 w-full text-sm font-medium text-accent">
-        Jot a tip or note for this day
-      </button>
+      <div className="grid grid-cols-2 gap-2">
+        <button type="button" onClick={() => onChangeDay(day.date)} className="min-h-11 rounded-xl border border-border text-sm font-medium text-accent">
+          Change this day
+        </button>
+        <button type="button" onClick={() => setCapturing(true)} className="min-h-11 rounded-xl border border-border text-sm font-medium text-accent">
+          Jot a tip or note
+        </button>
+      </div>
       <p className="text-center text-xs text-muted">Locked items stay put when you re-plan. Milestones start locked.</p>
 
       {vanOpen && day.place && (

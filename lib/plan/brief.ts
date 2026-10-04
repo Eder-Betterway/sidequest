@@ -20,3 +20,10 @@ export function formatAskPlan(days: AskDay[]): string {
     })
     .join("\n");
 }
+
+/** Up to a few items per day, in time order, never hiding milestones or locked bookings. */
+export function previewItems<T extends { kind: string; locked: boolean }>(items: T[], max = 4): T[] {
+  const must = new Set(items.filter((i) => i.kind === "milestone" || i.locked));
+  let room = Math.max(0, max - must.size);
+  return items.filter((i) => must.has(i) || room-- > 0);
+}

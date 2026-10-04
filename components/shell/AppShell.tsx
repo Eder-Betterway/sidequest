@@ -26,6 +26,8 @@ function SignedIn({ email }: { email: string }) {
   const trips = useTrips(email);
   const [tab, setTab] = useState<TabId>(() => (prefs.activeTrip() ? "plan" : "trips"));
   const [activeId, setActiveId] = useState<string | null>(() => prefs.activeTrip());
+  // "Ask about the trip" on the itinerary opens Ask with a question ready to type.
+  const [askNow, setAskNow] = useState(false);
 
   // A trip deleted on the other phone (or never synced here) just isn't open.
   const active = trips.trips.find((t) => t.id === activeId) ?? null;
@@ -73,6 +75,10 @@ function SignedIn({ email }: { email: string }) {
                   open(null);
                   setTab("trips");
                 }}
+                onAskTrip={() => {
+                  setAskNow(true);
+                  setTab("ask");
+                }}
               />
             ))}
           {(tab === "notes" || tab === "ask") &&
@@ -80,14 +86,20 @@ function SignedIn({ email }: { email: string }) {
               <p className="py-6 text-center text-sm text-muted">Loading...</p>
             ) : active ? (
               // Keyed by trip only, so switching between Notes and Ask keeps work in flight.
-              <NotesArea key={active.id} trip={active} email={email} tab={tab} />
+              <NotesArea key={active.id} trip={active} email={email} tab={tab} startAsking={askNow} />
             ) : (
               <NoTripOpen />
             ))}
         </div>
       </main>
 
-      <TabBar active={tab} onChange={setTab} />
+      <TabBar
+        active={tab}
+        onChange={(t) => {
+          setAskNow(false);
+          setTab(t);
+        }}
+      />
     </div>
   );
 }

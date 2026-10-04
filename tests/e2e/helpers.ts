@@ -23,5 +23,6 @@ export async function plannedTrip(page: Page, name: string) {
   for (let i = 0; i < 3; i++) await page.getByRole("button", { name: /^(Next|Done)$/ }).click();
   await page.getByRole("button", { name: "Draft 3 options" }).click();
   await page.getByRole("button", { name: "Pick this one" }).first().click();
-  await expect(page.getByRole("navigation", { name: "Days" }).getByRole("button")).toHaveCount(3);
+  // Lands on the itinerary: one row per day (named like the day chips, so tests can open any day).
+  await expect(page.getByRole("button", { name: /^Day \d+, / })).toHaveCount(3);
 }

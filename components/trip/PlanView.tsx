@@ -11,6 +11,10 @@ import DayPlan from "@/components/plan/DayPlan";
 import { usePlan } from "@/components/plan/usePlan";
 import { useNotes } from "@/components/notes/useNotes";
 import TripVibeSheet from "@/components/plan/TripVibeSheet";
+import Itinerary from "@/components/plan/Itinerary";
+import ChangeSheet from "@/components/plan/ChangeSheet";
+import TripProposalSheet from "@/components/plan/TripProposalSheet";
+import { acceptTripProposal, dismissTripProposal } from "@/lib/data/plan";
 import { Notice } from "./TripsView";
 
 /** The open trip: its day plan once there is one, otherwise the options to build it from. */
@@ -18,25 +22,34 @@ export default function PlanView({
   trip,
   email,
   onDeleted,
+  onAskTrip,
 }: {
   trip: Trip | null;
   email: string;
   onDeleted: () => void;
+  /** Open the Ask tab with a question ready to type. */
+  onAskTrip?: () => void;
 }) {
   if (!trip) {
     return <Notice title="No trip open">Pick a trip on the Trips tab, or start a new one.</Notice>;
   }
   // Keyed so switching trips resets everything inside.
-  return <OpenTrip key={trip.id} trip={trip} email={email} onDeleted={onDeleted} />;
+  return <OpenTrip key={trip.id} trip={trip} email={email} onDeleted={onDeleted} onAskTrip={onAskTrip} />;
 }
 
-function OpenTrip({ trip, email, onDeleted }: { trip: Trip; email: string; onDeleted: () => void }) {
+type View = "itinerary" | "days" | "options";
+
+function OpenTrip({ trip, email, onDeleted, onAskTrip }: { trip: Trip; email: string; onDeleted: () => void; onAskTrip?: () => void }) {
   const plan = usePlan(trip.id);
   const { notes } = useNotes(trip.id);
   const inputs = readInputs(trip.inputs);
   const [wizard, setWizard] = useState(false);
   const [vibeOpen, setVibeOpen] = useState(false);
-  const [view, setView] = useState<"days" | "options">("days");
+  const [view, setView] = useState<View>("itinerary");
+  const [selected, setSelected] = useState<string | null>(null);
+  const [changing, setChanging] = useState<{ focusDate: string | null } | null>(null);
+  const [reviewingTrip, setReviewingTrip] = useState(false);
+  const tripProposal = plan.tripProposals[plan.tripProposals.length - 1];
   const [confirming, setConfirming] = useState(false);
 
   const hasDays = plan.days.length > 0;
@@ -61,16 +74,47 @@ function OpenTrip({ trip, email, onDeleted }: { trip: Trip; email: string; onDel
       {hasDays && (
         <Segmented
           label="Show"
-          options={["days", "options"] as const}
+          options={["itinerary", "days", "options"] as const}
           value={view}
           onChange={setView}
         />
       )}
 
+      {tripProposal && hasDays && (
+        <button
+          type="button"
+          onClick={() => setReviewingTrip(true)}
+          className="flex min-h-12 w-full items-center justify-between rounded-xl bg-accent-soft px-3 text-left text-sm font-semibold text-accent"
+        >
+          Suggested trip changes ready
+          <span aria-hidden>›</span>
+        </button>
+      )}
+
       {!plan.loaded ? (
         <p className="py-6 text-center text-sm text-muted">Loading the plan...</p>
+      ) : showing === "itinerary" ? (
+        <Itinerary
+          trip={trip}
+          inputs={inputs}
+          plan={plan}
+          onOpenDay={(date) => {
+            setSelected(date);
+            setView("days");
+          }}
+          onChange={(focusDate) => setChanging({ focusDate })}
+          onAsk={onAskTrip}
+        />
       ) : showing === "days" ? (
-        <DayPlan trip={trip} inputs={inputs} plan={plan} email={email} />
+        <DayPlan
+          trip={trip}
+          inputs={inputs}
+          plan={plan}
+          email={email}
+          selected={selected}
+          onSelect={setSelected}
+          onChangeDay={(date) => setChanging({ focusDate: date })}
+        />
       ) : (
         <OptionsView
           trip={trip}
@@ -78,7 +122,7 @@ function OpenTrip({ trip, email, onDeleted }: { trip: Trip; email: string; onDel
           plan={plan}
           email={email}
           onEditInputs={() => setWizard(true)}
-          onPlanned={() => setView("days")}
+          onPlanned={() => setView("itinerary")}
         />
       )}
 
@@ -115,6 +159,37 @@ function OpenTrip({ trip, email, onDeleted }: { trip: Trip; email: string; onDel
       </div>
 
       {wizard && <TripWizard trip={trip} initial={inputs} onClose={() => setWizard(false)} />}
+      {changing && (
+        <ChangeSheet
+          trip={trip}
+          inputs={inputs}
+          plan={plan}
+          email={email}
+          focusDate={changing.focusDate}
+          onClose={() => setChanging(null)}
+          onReview={() => {
+            setChanging(null);
+            setReviewingTrip(true);
+          }}
+        />
+      )}
+      {reviewingTrip && tripProposal && (
+        <TripProposalSheet
+          proposal={tripProposal}
+          days={plan.days}
+          items={plan.items}
+          units={inputs.units}
+          onClose={() => setReviewingTrip(false)}
+          onDismiss={() => {
+            dismissTripProposal(trip.id, tripProposal.id);
+            setReviewingTrip(false);
+          }}
+          onApply={(keep) => {
+            acceptTripProposal(trip.id, tripProposal, keep, plan.items, email);
+            setReviewingTrip(false);
+          }}
+        />
+      )}
       {vibeOpen && <TripVibeSheet trip={trip} inputs={inputs} plan={plan} email={email} onClose={() => setVibeOpen(false)} />}
     </div>
   );

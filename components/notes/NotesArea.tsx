@@ -25,12 +25,23 @@ import { useNotes } from "./useNotes";
  * asked (or snapped a flyer) is back online, questions get answered and flyers
  * get read without anyone tapping anything.
  */
-export default function NotesArea({ trip, email, tab }: { trip: Trip; email: string; tab: "notes" | "ask" }) {
+export default function NotesArea({
+  trip,
+  email,
+  tab,
+  startAsking = false,
+}: {
+  trip: Trip;
+  email: string;
+  tab: "notes" | "ask";
+  /** Open with the question box up, about the whole trip. */
+  startAsking?: boolean;
+}) {
   const plan = usePlan(trip.id);
   const { loaded, notes } = useNotes(trip.id);
   const inputs = readInputs(trip.inputs);
   const online = useOnline();
-  const [capture, setCapture] = useState<NoteKind | null>(null);
+  const [capture, setCapture] = useState<NoteKind | null>(startAsking ? "question" : null);
   const [work, setWork] = useState<Record<string, Work>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [reviewDay, setReviewDay] = useState<string | null>(null);
@@ -69,6 +80,8 @@ export default function NotesArea({ trip, email, tab }: { trip: Trip; email: str
         date: d.date,
         base: d.base.slice(0, 200),
         title: d.title.slice(0, 200),
+        lat: d.place?.lat ?? null,
+        lng: d.place?.lng ?? null,
         items: dayItems(d.date)
           .slice(0, 40)
           .map((i) => ({ start: i.start, title: i.title.slice(0, 200), place: i.place?.slice(0, 200) ?? null, locked: i.locked })),
@@ -206,7 +219,7 @@ export default function NotesArea({ trip, email, tab }: { trip: Trip; email: str
           kinds={capture === "question" ? ["question"] : ["tip", "note", "flyer"]}
           initialKind={capture}
           days={days}
-          initialDay={startDay}
+          initialDay={startAsking && capture === "question" ? null : startDay}
           onClose={() => setCapture(null)}
         />
       )}

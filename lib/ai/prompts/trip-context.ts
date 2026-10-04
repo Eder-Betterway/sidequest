@@ -81,6 +81,10 @@ export function describeTrip(
   add("Units", inputs.units === "metric" ? "km, °C" : "miles, °F");
   add("Home currency", inputs.homeCurrency);
   add("Other notes", inputs.extraNotes);
+  if (inputs.rules.length) {
+    lines.push("- Rules they've set (always follow these):");
+    for (const r of inputs.rules) lines.push(`  - ${r}`);
+  }
 
   return lines.join("\n");
 }

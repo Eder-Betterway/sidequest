@@ -73,15 +73,20 @@ const PlanItemBrief = z.object({
   locked: z.boolean(),
 });
 
+const Coords = {
+  lat: z.number().min(-90).max(90).nullable().default(null),
+  lng: z.number().min(-180).max(180).nullable().default(null),
+};
+
 export const AskRequestSchema = z.object({
   trip: TripBriefSchema,
   inputs: TripInputsSchema,
   question: z.string().min(1).max(1000),
   /** The day it's about, if any. */
   dayDate: ISO.nullable().default(null),
-  /** The plan as it stands, so answers fit it. */
+  /** The plan as it stands, so answers fit it. Coordinates let the server look up weather. */
   days: z
-    .array(z.object({ date: ISO, base: z.string().max(200), title: z.string().max(200), items: z.array(PlanItemBrief).max(40) }))
+    .array(z.object({ date: ISO, base: z.string().max(200), title: z.string().max(200), items: z.array(PlanItemBrief).max(40), ...Coords }))
     .max(60)
     .default([]),
   /** Recent notes and tips, newest first. */
@@ -96,6 +101,29 @@ export const FlyerRequestSchema = z.object({
   mediaType: z.enum(["image/jpeg", "image/png", "image/webp"]),
   /** Where they were when they snapped it. */
   near: z.string().max(200).nullable().default(null),
+  today: ISO,
+});
+
+export const RerouteRequestSchema = z.object({
+  trip: TripBriefSchema,
+  inputs: TripInputsSchema,
+  /** The whole plan as it stands. */
+  days: z
+    .array(
+      z.object({
+        date: ISO,
+        base: z.string().max(200),
+        title: z.string().max(200),
+        items: z.array(PlanItemSchema.extend({ locked: z.boolean() })).max(40),
+        ...Coords,
+      })
+    )
+    .min(1)
+    .max(60),
+  /** What they want: "Stay in Palm Springs through this day for the wedding". */
+  instruction: z.string().min(1).max(1000),
+  /** The day they asked from, if any. */
+  focusDate: ISO.nullable().default(null),
   today: ISO,
 });
 

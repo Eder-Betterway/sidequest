@@ -11,7 +11,7 @@ test("a local tip becomes a plan suggestion you accept", async ({ page }) => {
   await page.getByRole("button", { name: /Day 2, Tuesday, Nov 3/ }).click();
 
   // Quick capture right from the day.
-  await page.getByRole("button", { name: "Jot a tip or note for this day" }).click();
+  await page.getByRole("button", { name: "Jot a tip or note" }).click();
   const capture = page.getByRole("dialog", { name: "Add a local tip" });
   await capture.getByLabel("What did you hear?").fill("Ranger says the hot springs are empty at dawn");
   await expect(capture.getByLabel("About")).toHaveValue("2026-11-03");
@@ -85,6 +85,7 @@ test("snap a flyer, pick its events, and they land on the plan", async ({ page }
   await expect(card.getByRole("img")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Plan", exact: true }).click();
+  await page.getByRole("button", { name: /Day 1, Monday, Nov 2/ }).click();
   await expect(page.getByText("Night market")).toBeVisible();
   await expect(page.getByText("Cash only")).toBeVisible();
 });
