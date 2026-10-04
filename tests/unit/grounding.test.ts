@@ -37,7 +37,7 @@ describe("sun times", () => {
 describe("geocoding", () => {
   const results = [
     { name: "Moab", latitude: 1, longitude: 1, timezone: "Asia/Kolkata", country: "India", admin1: "Somewhere" },
-    { name: "Moab", latitude: 38.57, longitude: -109.55, timezone: "America/Denver", country: "United States", admin1: "Utah" },
+    { name: "Moab", latitude: 38.57, longitude: -109.55, timezone: "America/Denver", country: "United States", admin1: "Utah", country_code: "US" },
   ];
 
   it("prefers the result matching the region hint", () => {
@@ -55,6 +55,6 @@ describe("geocoding", () => {
 
   it("parses a successful lookup", async () => {
     const ok = (async () => Response.json({ results })) as unknown as typeof fetch;
-    expect(await geocode("Moab, Utah", ok)).toEqual({ name: "Moab, Utah", lat: 38.57, lng: -109.55, timezone: "America/Denver" });
+    expect(await geocode("Moab, Utah", ok)).toEqual({ name: "Moab, Utah", lat: 38.57, lng: -109.55, timezone: "America/Denver", countryCode: "US" });
   });
 });

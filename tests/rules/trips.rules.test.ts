@@ -113,3 +113,28 @@ describe("config", () => {
     await assertFails(setDoc(doc(as(ME), "config/allowlist"), { emails: [ME, STRANGER] }));
   });
 });
+
+describe("shared place cache", () => {
+  const place = { key: "moab-utah", name: "Moab, Utah", wiki: null, refreshedAt: 1 };
+
+  it("allowlisted people can read and write it", async () => {
+    await assertSucceeds(setDoc(doc(as(OUTSIDER), "places/moab-utah"), place));
+    await assertSucceeds(getDoc(doc(as(ME), "places/moab-utah")));
+  });
+
+  it("strangers and signed-out visitors can't", async () => {
+    await assertFails(setDoc(doc(as(STRANGER), "places/moab-utah"), place));
+    await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), "places/moab-utah")));
+  });
+
+  it("the stored key must match the document", async () => {
+    await assertFails(setDoc(doc(as(ME), "places/moab-utah"), { ...place, key: "somewhere-else" }));
+  });
+});
+
+describe("trip place info", () => {
+  it("follows the trip's members", async () => {
+    await assertSucceeds(setDoc(doc(as(PARTNER), "trips/t1/placeInfo/moab-utah"), { key: "moab-utah" }));
+    await assertFails(getDoc(doc(as(OUTSIDER), "trips/t1/placeInfo/moab-utah")));
+  });
+});

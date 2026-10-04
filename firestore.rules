@@ -42,6 +42,16 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Shared, trip-independent place facts (Wikipedia summaries). Any member
+    // can read and refresh them; nothing private lives here.
+    match /places/{key} {
+      allow read: if allowed();
+      allow write: if allowed()
+        && request.resource.data.key == key
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 200;
+    }
+
     match /trips/{tripId} {
       allow read: if allowed() && isMember(resource.data);
       allow create: if allowed()

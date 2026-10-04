@@ -76,6 +76,8 @@ export interface Place {
   lat: number;
   lng: number;
   timezone: string;
+  /** ISO 3166 two-letter code, for holidays. Missing on places saved before deep-dives. */
+  countryCode?: string | null;
 }
 
 /** Stored day (`trips/{id}/days/{date}`). */

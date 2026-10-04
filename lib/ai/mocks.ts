@@ -1,5 +1,6 @@
 import { dayCount, type TripInputs } from "@/lib/model/inputs";
 import type { DayDraft, PlanItemDraft, TripOption } from "@/lib/model/plan";
+import type { Holiday, HoursResult, PlaceInfo, Source, WeatherDay, WikiSummary } from "@/lib/model/place";
 
 /**
  * Stand-in AI answers for tests and local dev (AI_MOCK=1). Deterministic and
@@ -76,4 +77,49 @@ export function mockReplan(
     };
   }
   return { summary: "This day already fits the vibe.", items: unlocked };
+}
+
+// ---------- Place deep-dive stand-ins ----------
+
+export function mockPlaceFacts(name: string, from: string): {
+  wiki: WikiSummary;
+  weather: { kind: "forecast"; days: WeatherDay[] };
+  holidays: Holiday[];
+} {
+  return {
+    wiki: { title: name, extract: `${name} is a sample place used in tests. It has a long and colorful past.`, url: "https://en.wikipedia.org/wiki/Sample" },
+    weather: {
+      kind: "forecast",
+      days: [{ date: from, high: 24, low: 9, rain: 10, rainUnit: "%", label: "Clear" }],
+    },
+    holidays: [{ date: from, name: "Sample Day" }],
+  };
+}
+
+export function mockPlaceInfo(name: string): { info: PlaceInfo; sources: Source[] } {
+  return {
+    info: {
+      summary: `${name} suits a slow, scenic stay with good light at both ends of the day.`,
+      history: `People have passed through ${name} for centuries. The town grew around a trading post.`,
+      highlights: [
+        { title: "The overlook trail", why: "Big views for photos at golden hour" },
+        { title: "Old main street", why: "History and a good coffee stop" },
+      ],
+      tips: ["Parking fills by 9am on weekends.", "Bring layers; evenings get cold."],
+      bestTimes: ["Overlook at sunset, arrive 45 minutes early"],
+      happening: [{ title: "Saturday farmers market", when: "Saturdays, 8am to noon", url: "https://example.com/market" }],
+    },
+    sources: [{ title: "Example events listing", url: "https://example.com/market" }],
+  };
+}
+
+export function mockHours(query: string): HoursResult {
+  return {
+    available: true,
+    name: query,
+    address: "123 Sample St",
+    lines: ["Monday: 8:00 AM to 5:00 PM", "Tuesday: Closed"],
+    mapsUrl: "https://maps.google.com/?cid=1",
+    checkedAt: Date.now(),
+  };
 }

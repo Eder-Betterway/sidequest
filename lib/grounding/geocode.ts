@@ -43,7 +43,9 @@ export async function geocode(query: string, fetchImpl: typeof fetch = fetch): P
     if (!res.ok) return null;
     const body = (await res.json()) as { results?: GeoResult[] };
     const hit = pickResult(query, body.results ?? []);
-    return hit ? { name: query, lat: hit.latitude, lng: hit.longitude, timezone: hit.timezone } : null;
+    return hit
+      ? { name: query, lat: hit.latitude, lng: hit.longitude, timezone: hit.timezone, countryCode: hit.country_code ?? null }
+      : null;
   } catch {
     return null;
   }
@@ -60,5 +62,5 @@ export async function geocodeAll(names: string[]): Promise<Map<string, Place | n
 function mockPlace(query: string): Place {
   let h = 0;
   for (const c of query) h = (h * 31 + c.charCodeAt(0)) % 1000;
-  return { name: query, lat: 36 + (h % 40) / 10, lng: -112 + (h % 50) / 10, timezone: "America/Denver" };
+  return { name: query, lat: 36 + (h % 40) / 10, lng: -112 + (h % 50) / 10, timezone: "America/Denver", countryCode: "US" };
 }

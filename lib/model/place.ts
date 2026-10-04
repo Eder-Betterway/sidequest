@@ -1,0 +1,120 @@
+import { z } from "zod";
+
+/**
+ * Place deep-dives: what's worth knowing about a stop, for these two
+ * travelers on these dates. Facts that change (weather, holidays, opening
+ * hours) come from real sources; the AI writes the story and the tips, and
+ * every claim it found online carries its source link.
+ */
+
+/** Stable cache key for a place name: "Moab, Utah" -> "moab-utah". */
+export function placeKey(name: string): string {
+  return (
+    name
+      .normalize("NFKD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "place"
+  );
+}
+
+// ---------- What the AI returns (structured) ----------
+
+export const PlaceInfoSchema = z.object({
+  summary: z.string().describe("Two sentences on why this place is worth their time, tied to their interests"),
+  history: z.string().describe("A short, vivid history in 3 to 5 sentences"),
+  highlights: z
+    .array(z.object({ title: z.string(), why: z.string().describe("One line, tied to their interests") }))
+    .describe("3 to 6 standout things to see or do"),
+  tips: z.array(z.string()).describe("2 to 5 practical tips: timing, crowds, parking, booking, local etiquette"),
+  bestTimes: z.array(z.string()).describe("When to go for the best experience, e.g. 'Delicate Arch at sunset, start by 5pm'"),
+  happening: z
+    .array(
+      z.object({
+        title: z.string(),
+        when: z.string().describe("Dates or days as found, within or near the trip dates"),
+        url: z.string().nullable().describe("Source link if one was found, else null"),
+      })
+    )
+    .describe("Events, markets, festivals, live music, closures during their dates. Empty if none found."),
+});
+export type PlaceInfo = z.infer<typeof PlaceInfoSchema>;
+
+export interface Source {
+  title: string;
+  url: string;
+}
+
+/** Shared, trip-independent cache: `places/{key}`. */
+export interface CachedPlace {
+  key: string;
+  name: string;
+  wiki: WikiSummary | null;
+  refreshedAt: number;
+}
+
+/** Trip-specific: `trips/{id}/placeInfo/{key}` (depends on dates and interests). */
+export interface TripPlaceInfo {
+  key: string;
+  name: string;
+  info: PlaceInfo | null;
+  sources: Source[];
+  weather: WeatherDay[];
+  weatherKind: "forecast" | "last-year" | null;
+  holidays: Holiday[];
+  from: string;
+  to: string;
+  fetchedAt: number;
+}
+
+// ---------- Grounding results ----------
+
+export interface WikiSummary {
+  title: string;
+  extract: string;
+  url: string;
+}
+
+export interface WeatherDay {
+  date: string;
+  /** °C; the app converts for display. */
+  high: number | null;
+  low: number | null;
+  /** Chance of rain % (forecast) or rain mm (last year). */
+  rain: number | null;
+  rainUnit: "%" | "mm";
+  label: string;
+}
+
+export interface Holiday {
+  date: string;
+  name: string;
+}
+
+export interface Hours {
+  available: true;
+  name: string;
+  address: string | null;
+  /** Google's own lines, e.g. "Monday: 8:00 AM to 5:00 PM". */
+  lines: string[];
+  mapsUrl: string | null;
+  checkedAt: number;
+}
+
+export type HoursResult = Hours | { available: false; mapsUrl: string };
+
+/** How stale cached content can get before a refresh is offered automatically. */
+export const PLACE_STALE_MS = 180 * 86_400_000;
+export const HAPPENING_STALE_MS = 3 * 86_400_000;
+
+export function mapsSearchUrl(query: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+/** °C to the trip's units, rounded. */
+export function tempIn(c: number | null, units: "imperial" | "metric"): string {
+  if (c === null) return "?";
+  return units === "metric" ? `${Math.round(c)}°` : `${Math.round((c * 9) / 5 + 32)}°`;
+}

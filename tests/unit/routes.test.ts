@@ -94,3 +94,21 @@ describe("POST /api/ai/replan", () => {
     expect((await replan(post({ trip, inputs, day, items, vibe: { pace: 400 }, today: "2026-09-20" }))).status).toBe(400);
   });
 });
+
+describe("place routes", () => {
+  it("guard the facts, deep-dive, and hours routes", async () => {
+    const { POST: facts } = await import("@/app/api/place/facts/route");
+    const { POST: hours } = await import("@/app/api/place/hours/route");
+    const { POST: deep } = await import("@/app/api/ai/place/route");
+    const factsBody = { place: { name: "Moab, Utah", lat: 38.5, lng: -109.5, countryCode: "US" }, from: "2026-10-01", to: "2026-10-02", today: "2026-09-20" };
+    expect((await facts(post(factsBody, null))).status).toBe(401);
+    expect((await facts(post(factsBody, "stranger@example.com"))).status).toBe(403);
+    expect((await facts(post(factsBody))).status).toBe(200);
+    expect((await hours(post({ query: "Taco truck" }))).status).toBe(200);
+    const res = await deep(post({ trip, inputs, place: { name: "Moab, Utah" }, from: "2026-10-01", to: "2026-10-02", today: "2026-09-20" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.info.highlights.length).toBeGreaterThan(0);
+    expect(body.sources[0].url).toMatch(/^https:/);
+  });
+});

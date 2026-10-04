@@ -37,6 +37,35 @@ export const ReplanRequestSchema = z.object({
   today: ISO,
 });
 
+const PlaceRef = z.object({
+  name: z.string().min(1).max(200),
+  lat: z.number().min(-90).max(90).nullable(),
+  lng: z.number().min(-180).max(180).nullable(),
+  countryCode: z.string().max(3).nullable().default(null),
+});
+
+export const PlaceFactsRequestSchema = z.object({
+  place: PlaceRef,
+  from: ISO,
+  to: ISO,
+  today: ISO,
+});
+
+export const PlaceDeepDiveRequestSchema = z.object({
+  trip: TripBriefSchema,
+  inputs: TripInputsSchema,
+  place: z.object({ name: z.string().min(1).max(200) }),
+  from: ISO,
+  to: ISO,
+  today: ISO,
+  wiki: z.object({ title: z.string().max(300), extract: z.string().max(5000), url: z.string().max(500) }).nullable().default(null),
+});
+
+export const HoursRequestSchema = z.object({
+  query: z.string().min(1).max(300),
+  near: z.object({ lat: z.number(), lng: z.number() }).nullable().default(null),
+});
+
 /** Trips longer than this would cost a lot per generation; plan them in parts. */
 export const MAX_TRIP_DAYS = 45;
 

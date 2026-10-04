@@ -26,6 +26,7 @@ export type AiResult<T> = { ok: true; data: T; usage: Usage } | { ok: false; sta
 
 export interface StructuredCall<S extends z.ZodType> {
   role: ModelRole;
+  /** Ignored for the "quick" role: Haiku 4.5 rejects the effort setting. */
   effort: Effort;
   /** Stable instructions. Cached, so keep anything that varies per request out of it. */
   system: string;
@@ -53,7 +54,10 @@ export async function runStructured<S extends z.ZodType>(call: StructuredCall<S>
       max_tokens: call.maxTokens ?? 16000,
       system: [{ type: "text", text: call.system, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: call.prompt }],
-      output_config: { effort: call.effort, format: betaZodOutputFormat(call.schema) },
+      output_config: {
+        ...(call.role === "quick" ? {} : { effort: call.effort }),
+        format: betaZodOutputFormat(call.schema),
+      },
       ...(fallback ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
     });
 
