@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegister from "@/components/shell/ServiceWorkerRegister";
+import AppearanceSync from "@/components/shell/AppearanceSync";
+import { APPEARANCE_INIT_SCRIPT } from "@/lib/appearance";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -31,10 +33,15 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+    // The appearance script sets theme, accent, and text size on <html> before React loads.
+    <html lang="en" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: APPEARANCE_INIT_SCRIPT }} />
+      </head>
       <body className="h-full font-sans">
         {children}
         <ServiceWorkerRegister />
+        <AppearanceSync />
       </body>
     </html>
   );
