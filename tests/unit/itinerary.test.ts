@@ -183,3 +183,47 @@ describe("POST /api/ai/reroute", () => {
     expect(json.days[0]).toMatchObject({ date: "2026-11-04", base: "Palm Springs", place: { name: "Palm Springs" } });
   });
 });
+
+describe("draft changes", () => {
+  it("validates drafts and stamps who wrote them", async () => {
+    const { buildDraft } = await import("@/lib/model/draft");
+    expect(buildDraft({ text: "  Stay longer ", dayDate: "2026-11-04", rule: true }, "Me@Example.com")).toEqual({
+      ok: true,
+      draft: { text: "Stay longer", dayDate: "2026-11-04", rule: true, createdBy: "me@example.com" },
+    });
+    expect(buildDraft({ text: " ", dayDate: null, rule: false }, "me@example.com").ok).toBe(false);
+    expect(buildDraft({ text: "x".repeat(601), dayDate: null, rule: false }, "me@example.com").ok).toBe(false);
+  });
+
+  it("scopes drafts to a day, or all of them for the whole trip", async () => {
+    const { draftsFor } = await import("@/lib/model/draft");
+    const list = [{ dayDate: "2026-11-03" }, { dayDate: "2026-11-04" }, { dayDate: null }];
+    expect(draftsFor(list, "2026-11-04")).toEqual([{ dayDate: "2026-11-04" }]);
+    expect(draftsFor(list, null)).toHaveLength(3);
+  });
+
+  it("sends one request as written, and several as one dated list", async () => {
+    const { combineRequests, ruleText } = await import("@/lib/model/draft");
+    expect(combineRequests([{ text: "Stay longer", dayDate: "2026-11-04" }], "2026-11-04")).toEqual({
+      instruction: "Stay longer",
+      focusDate: "2026-11-04",
+    });
+    expect(
+      combineRequests(
+        [
+          { text: "Less driving", dayDate: null },
+          { text: "Stay longer", dayDate: "2026-11-04" },
+          { text: "Arrive early", dayDate: "2026-11-03" },
+        ],
+        null
+      )
+    ).toEqual({
+      instruction: "Make all of these changes together:\n- Whole trip: Less driving\n- On 2026-11-03: Arrive early\n- On 2026-11-04: Stay longer",
+      focusDate: null,
+    });
+    // All about the open day: still focused on it.
+    expect(combineRequests([{ text: "a", dayDate: "2026-11-04" }, { text: "b", dayDate: "2026-11-04" }], "2026-11-04").focusDate).toBe("2026-11-04");
+    expect(ruleText({ text: " Stay ", dayDate: "2026-11-04" })).toBe("On 2026-11-04: Stay");
+    expect(ruleText({ text: "No night driving", dayDate: null })).toBe("No night driving");
+  });
+});

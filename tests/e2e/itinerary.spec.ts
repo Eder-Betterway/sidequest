@@ -41,12 +41,4 @@ test("the whole trip at a glance, a change request that moves a day, and a rule 
   await page.getByRole("radio", { name: "itinerary" }).click();
   await page.getByRole("button", { name: /Remove rule/ }).click();
   await expect(page.getByText(/On 2026-11-04/)).toHaveCount(0);
-
-  // Questions about the whole trip go to Ask, ready to type.
-  await page.getByRole("button", { name: "Ask about the trip" }).click();
-  const q = page.getByRole("dialog", { name: "Ask a question" });
-  await expect(q.getByLabel("About")).toHaveValue("");
-  await q.getByLabel("Your question").fill("Does this line up well with the weather?");
-  await q.getByRole("button", { name: "Ask", exact: true }).click();
-  await expect(page.getByRole("article", { name: /Question: Does this line up/ })).toContainText("Short answer: yes.");
 });

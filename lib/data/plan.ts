@@ -146,10 +146,11 @@ export function logAiRun(tripId: string, route: string, usage: Usage | null, me:
  */
 export function deleteTripWithPlan(
   tripId: string,
-  ids: { optionIds: string[]; dayIds: string[]; itemIds: string[]; noteIds?: string[] }
+  ids: { optionIds: string[]; dayIds: string[]; itemIds: string[]; noteIds?: string[]; draftIds?: string[] }
 ) {
   const d = db();
   const batch = writeBatch(d);
+  for (const id of ids.draftIds ?? []) batch.delete(doc(d, "trips", tripId, "drafts", id));
   for (const id of ids.noteIds ?? []) batch.delete(doc(d, "trips", tripId, "notes", id));
   for (const id of ids.itemIds) batch.delete(doc(d, "trips", tripId, "items", id));
   for (const id of ids.dayIds) batch.delete(doc(d, "trips", tripId, "days", id));
@@ -287,6 +288,8 @@ export function acceptTripProposal(tripId: string, p: TripProposal, keepDates: S
       }
     }
   }
+  // The drafts it answered are done.
+  for (const id of p.draftIds ?? []) batch.delete(doc(d, "trips", tripId, "drafts", id));
   batch.update(doc(d, "trips", tripId, "tripProposals", p.id), { status: "accepted" });
   batch.commit().catch(fail("applying the trip suggestion"));
 }

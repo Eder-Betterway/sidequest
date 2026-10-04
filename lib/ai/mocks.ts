@@ -170,26 +170,31 @@ export function mockSpots(c: { lat: number; lng: number }): VanSpot[] {
 // ---------- Trip change stand-in ----------
 
 /**
- * "Stay on" stand-in: the asked-about day (or the last day) moves to Palm
- * Springs and gains one item; its unlocked items stay as they were.
+ * "Stay on" stand-in: every day the request names ("On 2026-11-04: ..."), or
+ * else the asked-about day (or the last day), moves to Palm Springs and gains
+ * one item; its unlocked items stay as they were.
  */
 export function mockReroute(
   days: { date: string; base: string; items: (PlanItemDraft & { locked: boolean })[] }[],
-  focusDate: string | null
+  focusDate: string | null,
+  instruction = ""
 ): { summary: string; days: DayDraft[] } {
-  const target = days.find((d) => d.date === focusDate) ?? days[days.length - 1];
-  const kept: PlanItemDraft[] = target.items
-    .filter((i) => !i.locked)
-    .map((i) => ({ kind: i.kind, title: i.title, start: i.start, end: i.end, place: i.place, notes: i.notes }));
+  const named = [...instruction.matchAll(/On (\d{4}-\d{2}-\d{2})/g)].map((m) => m[1]);
+  const targets = named.length
+    ? days.filter((d) => named.includes(d.date))
+    : [days.find((d) => d.date === focusDate) ?? days[days.length - 1]];
   return {
     summary: "Stayed on in Palm Springs for the wedding and pushed the next stop back a day.",
-    days: [
-      {
-        date: target.date,
-        base: "Palm Springs",
-        title: "Staying on in Palm Springs",
-        items: [...kept, { kind: "activity", title: "Pool afternoon before the wedding", start: "14:00", end: "16:00", place: "Palm Springs", notes: "" }],
-      },
-    ],
+    days: targets.map((target) => ({
+      date: target.date,
+      base: "Palm Springs",
+      title: "Staying on in Palm Springs",
+      items: [
+        ...target.items
+          .filter((i) => !i.locked)
+          .map((i) => ({ kind: i.kind, title: i.title, start: i.start, end: i.end, place: i.place, notes: i.notes })),
+        { kind: "activity" as const, title: "Pool afternoon before the wedding", start: "14:00", end: "16:00", place: "Palm Springs", notes: "" },
+      ],
+    })),
   };
 }

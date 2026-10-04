@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   let changed: DayDraft[];
   let usage = null;
   if (process.env.AI_MOCK === "1") {
-    ({ summary, days: changed } = mockReroute(days, focusDate));
+    ({ summary, days: changed } = mockReroute(days, focusDate, instruction));
   } else {
     const weather = await weatherBrief(days, today);
     const result = await runStructured({

@@ -9,39 +9,28 @@ import { Notice } from "@/components/trip/TripsView";
 import { callAi, todayIso } from "@/lib/ai/client";
 import type { Usage } from "@/lib/ai/claude";
 import { acceptProposal, dismissProposal } from "@/lib/data/plan";
-import { addFlyerEventsToPlan, deleteNote, markNoteUsed, saveAnswer, saveFlyerEvents } from "@/lib/data/notes";
+import { addFlyerEventsToPlan, deleteNote, markNoteUsed, saveFlyerEvents } from "@/lib/data/notes";
 import { readInputs } from "@/lib/model/inputs";
 import { defaultNoteDay, replanNoteFor, unanswered, type FlyerEvent, type Note, type NoteKind } from "@/lib/model/note";
-import type { Source } from "@/lib/model/place";
 import { sortItems, type PlanItemDraft } from "@/lib/model/plan";
 import type { Trip } from "@/lib/model/trip";
 import { effectiveVibe } from "@/lib/plan/vibe";
 import CaptureSheet, { dayChoices } from "./CaptureSheet";
 import NoteCard, { type Work } from "./NoteCard";
 import { useNotes } from "./useNotes";
+import { askQuestion } from "./ask";
 
 /**
  * The Notes and Ask tabs. Capture works with no signal; when the phone that
  * asked (or snapped a flyer) is back online, questions get answered and flyers
  * get read without anyone tapping anything.
  */
-export default function NotesArea({
-  trip,
-  email,
-  tab,
-  startAsking = false,
-}: {
-  trip: Trip;
-  email: string;
-  tab: "notes" | "ask";
-  /** Open with the question box up, about the whole trip. */
-  startAsking?: boolean;
-}) {
+export default function NotesArea({ trip, email, tab }: { trip: Trip; email: string; tab: "notes" | "ask" }) {
   const plan = usePlan(trip.id);
   const { loaded, notes } = useNotes(trip.id);
   const inputs = readInputs(trip.inputs);
   const online = useOnline();
-  const [capture, setCapture] = useState<NoteKind | null>(startAsking ? "question" : null);
+  const [capture, setCapture] = useState<NoteKind | null>(null);
   const [work, setWork] = useState<Record<string, Work>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [reviewDay, setReviewDay] = useState<string | null>(null);
@@ -68,30 +57,11 @@ export default function NotesArea({
     });
 
   async function ask(n: Note) {
-    if (!brief) return setError(n.id, "Add the trip's dates first.");
     setBusy(n.id, "asking");
     setError(n.id, null);
-    const res = await callAi<{ text: string; sources: Source[]; usage: Usage | null }>("/api/ai/ask", {
-      trip: brief,
-      inputs,
-      question: n.text,
-      dayDate: n.dayDate,
-      days: plan.days.slice(0, 60).map((d) => ({
-        date: d.date,
-        base: d.base.slice(0, 200),
-        title: d.title.slice(0, 200),
-        lat: d.place?.lat ?? null,
-        lng: d.place?.lng ?? null,
-        items: dayItems(d.date)
-          .slice(0, 40)
-          .map((i) => ({ start: i.start, title: i.title.slice(0, 200), place: i.place?.slice(0, 200) ?? null, locked: i.locked })),
-      })),
-      notes: notes.filter((x) => x.kind !== "question" && x.text).slice(0, 30).map((x) => x.text),
-      today: todayIso(),
-    });
+    const res = await askQuestion({ trip, inputs, plan, notes, note: n, email });
     setBusy(n.id, null);
-    if (!res.ok) return setError(n.id, res.error);
-    saveAnswer(trip.id, n.id, { text: res.data.text, sources: res.data.sources }, res.data.usage, email);
+    if (!res.ok) setError(n.id, res.error);
   }
 
   async function read(n: Note) {
@@ -219,7 +189,7 @@ export default function NotesArea({
           kinds={capture === "question" ? ["question"] : ["tip", "note", "flyer"]}
           initialKind={capture}
           days={days}
-          initialDay={startAsking && capture === "question" ? null : startDay}
+          initialDay={startDay}
           onClose={() => setCapture(null)}
         />
       )}
