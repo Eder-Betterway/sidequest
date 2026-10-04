@@ -1,6 +1,7 @@
 import { dayCount, type TripInputs } from "@/lib/model/inputs";
 import type { DayDraft, PlanItemDraft, TripOption } from "@/lib/model/plan";
 import type { FlyerEvent } from "@/lib/model/note";
+import type { VanSpot } from "@/lib/model/van";
 import type { Holiday, HoursResult, PlaceInfo, Source, WeatherDay, WikiSummary } from "@/lib/model/place";
 
 /**
@@ -150,4 +151,18 @@ export function mockFlyer(startDate: string): { events: FlyerEvent[] } {
       { title: "Open mic", date: null, start: "20:00", end: null, place: "The corner cafe", notes: "" },
     ],
   };
+}
+
+// ---------- Van stand-ins ----------
+
+export function mockLeg() {
+  return { km: 412, hours: 5.5, source: "route" as const, profile: "driving-car" };
+}
+
+export function mockSpots(c: { lat: number; lng: number }): VanSpot[] {
+  return [
+    { id: "node/1", kind: "camp", name: "Canyon Rim Campground", lat: c.lat + 0.05, lng: c.lng, km: 5.6, fee: true, maxLengthM: 7, url: "https://example.com/camp", facts: ["Toilets", "Water too"] },
+    { id: "node/2", kind: "camp", name: "BLM dispersed area", lat: c.lat - 0.1, lng: c.lng, km: 11.1, fee: false, maxLengthM: null, url: null, facts: [] },
+    { id: "node/3", kind: "dump", name: "Gas station dump", lat: c.lat, lng: c.lng + 0.02, km: 1.8, fee: true, maxLengthM: null, url: null, facts: ["Water too"] },
+  ];
 }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TripInputsSchema } from "@/lib/model/inputs";
+import { TripInputsSchema, VehicleSchema } from "@/lib/model/inputs";
 import { OptionSchema, PlanItemSchema } from "@/lib/model/plan";
 import { VibeSchema } from "@/lib/plan/vibe";
 
@@ -97,6 +97,22 @@ export const FlyerRequestSchema = z.object({
   /** Where they were when they snapped it. */
   near: z.string().max(200).nullable().default(null),
   today: ISO,
+});
+
+const NamedPoint = z.object({
+  name: z.string().min(1).max(200),
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+});
+
+export const LegRequestSchema = z.object({
+  from: NamedPoint,
+  to: NamedPoint,
+  vehicle: VehicleSchema.nullable().default(null),
+});
+
+export const NearbyRequestSchema = z.object({
+  place: NamedPoint,
 });
 
 /** Trips longer than this would cost a lot per generation; plan them in parts. */

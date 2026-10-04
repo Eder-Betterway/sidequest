@@ -259,6 +259,10 @@ function VehicleEditor({
   const dist = (km: number | null) => (km === null ? null : Math.round(metric ? km : km * MI_PER_KM));
   const fromDist = (x: number | null) => (x === null ? null : metric ? x : x / MI_PER_KM);
   const unit = metric ? "m" : "ft";
+  // Weight in tonnes (metric) or pounds; only big rigs route as trucks.
+  const LB_PER_T = 2204.62;
+  const wt = (t: number | null) => (t === null ? null : metric ? Math.round(t * 10) / 10 : Math.round(t * LB_PER_T));
+  const fromWt = (x: number | null) => (x === null ? null : metric ? x : x / LB_PER_T);
 
   return (
     <section className="space-y-3 rounded-2xl border border-border p-4">
@@ -267,6 +271,8 @@ function VehicleEditor({
       <div className="grid grid-cols-2 gap-3">
         <NumberInput label={`Length (${unit})`} value={len(v.lengthM)} onChange={(x) => update({ lengthM: fromLen(x) })} step={0.1} />
         <NumberInput label={`Height (${unit})`} value={len(v.heightM)} onChange={(x) => update({ heightM: fromLen(x) })} step={0.1} />
+        <NumberInput label={`Width (${unit})`} value={len(v.widthM)} onChange={(x) => update({ widthM: fromLen(x) })} step={0.1} />
+        <NumberInput label={`Weight (${metric ? "t" : "lb"})`} value={wt(v.weightT)} onChange={(x) => update({ weightT: fromWt(x) })} step={metric ? 0.1 : 100} />
         <NumberInput label={`Range (${metric ? "km" : "mi"})`} value={dist(v.rangeKm)} onChange={(x) => update({ rangeKm: fromDist(x) })} />
         <NumberInput
           label="Off-grid nights"

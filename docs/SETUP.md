@@ -60,8 +60,8 @@ Make **two** projects, so test previews never touch your real trips.
 ## 5. Later, when those features land
 
 - **Google Places** (opening hours): in console.cloud.google.com, create a project, enable **Places API (New)**, add a billing account, create an API key, and restrict it to Places API (New). Add it to Vercel as `GOOGLE_PLACES_API_KEY`.
-- **OpenRouteService** (van-aware drive times): sign up at openrouteservice.org, copy the key into Vercel as `ORS_API_KEY`.
-- **US extras, optional:** NPS (developer.nps.gov) as `NPS_API_KEY`, Recreation.gov RIDB (ridb.recreation.gov) as `RIDB_API_KEY`.
+- **OpenRouteService** (real drive times between stops, routed around low bridges and weight limits for big rigs): sign up at openrouteservice.org (free, 2,000 routes a day), copy the key into Vercel as `ORS_API_KEY`, then redeploy. Without it, drive times are a rough straight-line estimate, labeled as such.
+- **US extras, not used yet:** NPS (developer.nps.gov) as `NPS_API_KEY`, Recreation.gov RIDB (ridb.recreation.gov) as `RIDB_API_KEY`. For now the app links to Recreation.gov's campground search, which needs no key.
 
 Each feature works without its key, just with a simpler fallback (like a "check hours" link).
 

@@ -13,6 +13,9 @@ import DayTuner from "./DayTuner";
 import { stayRange } from "@/lib/plan/schedule";
 import PlaceSheet, { type PlaceTarget } from "@/components/place/PlaceSheet";
 import CaptureSheet, { dayChoices } from "@/components/notes/CaptureSheet";
+import DriveLegCard from "@/components/van/DriveLegCard";
+import VanSheet from "@/components/van/VanSheet";
+import { legsFor } from "@/lib/model/van";
 
 const KIND_ICON: Record<ItemKind, string> = {
   activity: "●",
@@ -54,6 +57,7 @@ export default function DayPlan({
   });
   const [editing, setEditing] = useState<StoredItem | "new" | null>(null);
   const [capturing, setCapturing] = useState(false);
+  const [vanOpen, setVanOpen] = useState(false);
   const [placeOpen, setPlaceOpen] = useState<{ target: PlaceTarget; from: string; to: string } | null>(null);
 
   const day = plan.days.find((d) => d.date === selected) ?? plan.days[0];
@@ -65,6 +69,11 @@ export default function DayPlan({
 
   if (!day) return null;
   const label = dayLabel(day.date);
+  const van = inputs.modes.includes("campervan");
+  const drives = van || inputs.modes.includes("car");
+  const leg = drives
+    ? legsFor(plan.days.map((d) => ({ date: d.date, base: d.base, place: d.place }))).find((l) => l.date === day.date)
+    : undefined;
 
   return (
     <div className="space-y-4">
@@ -103,6 +112,12 @@ export default function DayPlan({
         >
           About {day.base} ›
         </button>
+        {van && day.place && (
+          <button type="button" onClick={() => setVanOpen(true)} className="block min-h-11 text-left text-sm font-medium text-accent">
+            Sleep and restock nearby ›
+          </button>
+        )}
+        {leg && <DriveLegCard key={`drive-${leg.date}`} tripId={tripId} from={leg.from} to={leg.to} inputs={inputs} />}
         {sun ? (
           <dl className="mt-3 grid grid-cols-4 gap-2 text-center text-xs" aria-label="Sun times">
             {[
@@ -217,6 +232,15 @@ export default function DayPlan({
         Jot a tip or note for this day
       </button>
       <p className="text-center text-xs text-muted">Locked items stay put when you re-plan. Milestones start locked.</p>
+
+      {vanOpen && day.place && (
+        <VanSheet
+          tripId={tripId}
+          inputs={inputs}
+          place={{ name: day.base, lat: day.place.lat, lng: day.place.lng, countryCode: day.place.countryCode ?? null }}
+          onClose={() => setVanOpen(false)}
+        />
+      )}
 
       {capturing && (
         <CaptureSheet
