@@ -143,6 +143,11 @@ export const NearbyRequestSchema = z.object({
   place: NamedPoint,
 });
 
+export const QuickStartRequestSchema = z.object({
+  text: z.string().trim().min(5).max(2000),
+  today: ISO,
+});
+
 /** Trips longer than this would cost a lot per generation; plan them in parts. */
 export const MAX_TRIP_DAYS = 45;
 
