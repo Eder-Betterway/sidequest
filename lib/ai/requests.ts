@@ -120,8 +120,8 @@ export const RerouteRequestSchema = z.object({
     )
     .min(1)
     .max(60),
-  /** What they want: "Stay in Palm Springs through this day for the wedding". */
-  instruction: z.string().min(1).max(1000),
+  /** What they want: "Stay in Palm Springs through this day for the wedding", or several drafts at once. */
+  instruction: z.string().min(1).max(8000),
   /** The day they asked from, if any. */
   focusDate: ISO.nullable().default(null),
   today: ISO,

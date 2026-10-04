@@ -10,6 +10,7 @@ import OptionsView from "@/components/plan/OptionsView";
 import DayPlan from "@/components/plan/DayPlan";
 import { usePlan } from "@/components/plan/usePlan";
 import { useNotes } from "@/components/notes/useNotes";
+import { useDrafts } from "@/components/plan/useDrafts";
 import TripVibeSheet from "@/components/plan/TripVibeSheet";
 import Itinerary from "@/components/plan/Itinerary";
 import ChangeSheet from "@/components/plan/ChangeSheet";
@@ -22,26 +23,24 @@ export default function PlanView({
   trip,
   email,
   onDeleted,
-  onAskTrip,
 }: {
   trip: Trip | null;
   email: string;
   onDeleted: () => void;
-  /** Open the Ask tab with a question ready to type. */
-  onAskTrip?: () => void;
 }) {
   if (!trip) {
     return <Notice title="No trip open">Pick a trip on the Trips tab, or start a new one.</Notice>;
   }
   // Keyed so switching trips resets everything inside.
-  return <OpenTrip key={trip.id} trip={trip} email={email} onDeleted={onDeleted} onAskTrip={onAskTrip} />;
+  return <OpenTrip key={trip.id} trip={trip} email={email} onDeleted={onDeleted} />;
 }
 
 type View = "itinerary" | "days" | "options";
 
-function OpenTrip({ trip, email, onDeleted, onAskTrip }: { trip: Trip; email: string; onDeleted: () => void; onAskTrip?: () => void }) {
+function OpenTrip({ trip, email, onDeleted }: { trip: Trip; email: string; onDeleted: () => void }) {
   const plan = usePlan(trip.id);
   const { notes } = useNotes(trip.id);
+  const drafts = useDrafts(trip.id);
   const inputs = readInputs(trip.inputs);
   const [wizard, setWizard] = useState(false);
   const [vibeOpen, setVibeOpen] = useState(false);
@@ -98,12 +97,14 @@ function OpenTrip({ trip, email, onDeleted, onAskTrip }: { trip: Trip; email: st
           trip={trip}
           inputs={inputs}
           plan={plan}
+          notes={notes}
+          drafts={drafts}
+          email={email}
           onOpenDay={(date) => {
             setSelected(date);
             setView("days");
           }}
           onChange={(focusDate) => setChanging({ focusDate })}
-          onAsk={onAskTrip}
         />
       ) : showing === "days" ? (
         <DayPlan
@@ -111,6 +112,8 @@ function OpenTrip({ trip, email, onDeleted, onAskTrip }: { trip: Trip; email: st
           inputs={inputs}
           plan={plan}
           email={email}
+          notes={notes}
+          drafts={drafts}
           selected={selected}
           onSelect={setSelected}
           onChangeDay={(date) => setChanging({ focusDate: date })}
@@ -139,6 +142,7 @@ function OpenTrip({ trip, email, onDeleted, onAskTrip }: { trip: Trip; email: st
                     dayIds: plan.days.map((d) => d.id),
                     itemIds: plan.items.map((i) => i.id),
                     noteIds: notes.map((n) => n.id),
+                    draftIds: drafts.map((d) => d.id),
                   });
                   onDeleted();
                 }}
@@ -164,6 +168,7 @@ function OpenTrip({ trip, email, onDeleted, onAskTrip }: { trip: Trip; email: st
           trip={trip}
           inputs={inputs}
           plan={plan}
+          drafts={drafts}
           email={email}
           focusDate={changing.focusDate}
           onClose={() => setChanging(null)}

@@ -24,6 +24,8 @@ export interface TripProposal {
   /** updatedAt of each affected day ("day:<date>") and item, to spot stale suggestions. */
   basedOn: Record<string, number>;
   status: "pending" | "accepted" | "dismissed";
+  /** Draft changes this came from; they're cleared once it's applied. */
+  draftIds?: string[];
   createdBy: string;
   createdAt: number;
 }

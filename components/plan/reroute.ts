@@ -20,6 +20,8 @@ export async function rerouteTrip(args: {
   plan: PlanState;
   instruction: string;
   focusDate: string | null;
+  /** Draft changes included in this request, cleared once the result is applied. */
+  draftIds?: string[];
   email: string;
 }): Promise<{ ok: true; changedDays: number; summary: string } | { ok: false; error: string }> {
   const { trip, inputs, plan, instruction, focusDate, email } = args;
@@ -49,7 +51,16 @@ export async function rerouteTrip(args: {
   if (changes.length > 0) {
     saveTripProposal(
       trip.id,
-      { instruction, focusDate, summary: res.data.summary, days: changes, basedOn, createdBy: email, createdAt: Date.now() },
+      {
+        instruction,
+        focusDate,
+        summary: res.data.summary,
+        days: changes,
+        basedOn,
+        draftIds: args.draftIds ?? [],
+        createdBy: email,
+        createdAt: Date.now(),
+      },
       plan.tripProposals.map((p) => p.id)
     );
   }
