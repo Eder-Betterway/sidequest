@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useOnline } from "@/components/shell/useOnline";
 import { useNow } from "@/components/shell/useNow";
-import { callAi } from "@/lib/ai/client";
-import { saveLeg, watchLeg } from "@/lib/data/van";
+import { loadLeg } from "./load";
+import { watchLeg } from "@/lib/data/van";
 import type { TripInputs } from "@/lib/model/inputs";
 import {
   estimateLeg,
@@ -42,12 +42,7 @@ export default function DriveLegCard({ tripId, from, to, inputs }: { tripId: str
     if (saved === undefined || current || !online || tried.current) return;
     tried.current = true;
     void (async () => {
-      const res = await callAi<Omit<DriveLeg, "fromName" | "toName" | "checkedAt">>("/api/van/leg", {
-        from,
-        to,
-        vehicle: inputs.vehicle,
-      });
-      if (res.ok) saveLeg(tripId, key, { ...res.data, fromName: from.name, toName: to.name });
+      await loadLeg(tripId, from, to, inputs.vehicle);
     })();
   }, [saved, current, online, tripId, key, from, to, inputs.vehicle]);
 

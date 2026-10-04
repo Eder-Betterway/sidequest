@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { setRules } from "@/lib/data/plan";
 import type { TripInputs } from "@/lib/model/inputs";
 import { formatTime, sortItems, type StoredItem } from "@/lib/model/plan";
@@ -13,6 +13,7 @@ import type { ChangeDraft } from "@/lib/model/draft";
 import type { Note } from "@/lib/model/note";
 import QuestionsPanel from "./QuestionsPanel";
 import ChangesCard from "./ChangesCard";
+import OfflineSheet from "./OfflineSheet";
 import type { HistoryEntry } from "@/lib/model/history";
 
 
@@ -52,6 +53,7 @@ export default function Itinerary({
   onChange: (focusDate: string | null) => void;
 }) {
   const units = inputs.units;
+  const [offline, setOffline] = useState(false);
   const drives = inputs.modes.includes("campervan") || inputs.modes.includes("car");
 
   const stays = useMemo(() => {
@@ -84,6 +86,9 @@ export default function Itinerary({
         {drafts.length > 0 && (
           <p className="mt-1 text-center text-xs text-muted">Drafts go to Claude together when you suggest changes.</p>
         )}
+        <button type="button" onClick={() => setOffline(true)} className="mt-2 min-h-11 w-full rounded-xl border border-border text-sm font-semibold">
+          Get ready for no signal
+        </button>
         {inputs.rules.length > 0 && (
           <div className="mt-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted">Rules every re-plan follows</p>
@@ -107,6 +112,7 @@ export default function Itinerary({
       </section>
 
       <QuestionsPanel trip={trip} inputs={inputs} plan={plan} notes={notes} email={email} dayDate={null} />
+      {offline && <OfflineSheet trip={trip} inputs={inputs} plan={plan} email={email} onClose={() => setOffline(false)} />}
 
       {stays.map((stay, s) => {
         const prev = stays[s - 1];

@@ -11,6 +11,7 @@ import QuestionsPanel from "@/components/plan/QuestionsPanel";
 import CaptureSheet, { dayChoices } from "@/components/notes/CaptureSheet";
 import DriveLegCard from "@/components/van/DriveLegCard";
 import VanSheet from "@/components/van/VanSheet";
+import OfflineSheet from "@/components/plan/OfflineSheet";
 import { callAi, todayIso } from "@/lib/ai/client";
 import { watchNearby } from "@/lib/data/van";
 import { sunTimes } from "@/lib/grounding/sun";
@@ -48,6 +49,7 @@ export default function TodayView({
   const inputs = readInputs(trip.inputs);
   const now = useNow(30_000);
   const [today] = useState(() => todayIso());
+  const [offline, setOffline] = useState(false);
   const phase = tripPhase(trip, today);
   const changes = <ChangesCard trip={trip} email={email} plan={plan} notes={notes} history={history} />;
 
@@ -84,8 +86,12 @@ export default function TodayView({
           <button type="button" onClick={() => onOpenDay(first.date)} className="mt-3 min-h-12 w-full rounded-xl border border-border font-semibold">
             Open day 1
           </button>
+          <button type="button" onClick={() => setOffline(true)} className="mt-2 min-h-12 w-full rounded-xl border border-border font-semibold">
+            Get ready for no signal
+          </button>
         </section>
         {changes}
+        {offline && <OfflineSheet trip={trip} inputs={inputs} plan={plan} email={email} onClose={() => setOffline(false)} />}
       </div>
     );
   }
@@ -136,6 +142,7 @@ function During({
   const day = plan.days[index];
   const [capturing, setCapturing] = useState(false);
   const [vanOpen, setVanOpen] = useState(false);
+  const [offline, setOffline] = useState(false);
   const items = useMemo(() => sortItems(plan.items.filter((i) => i.dayDate === today)), [plan.items, today]);
 
   if (!day) {
@@ -216,6 +223,11 @@ function During({
       {van && day.place && <Restock tripId={trip.id} base={day.base} units={units} onOpen={() => setVanOpen(true)} />}
 
       <QuestionsPanel key={today} trip={trip} inputs={inputs} plan={plan} notes={notes} email={email} dayDate={today} />
+
+      <button type="button" onClick={() => setOffline(true)} className="min-h-11 w-full text-sm font-medium text-accent">
+        Heading somewhere remote? Get ready for no signal ›
+      </button>
+      {offline && <OfflineSheet trip={trip} inputs={inputs} plan={plan} email={email} onClose={() => setOffline(false)} />}
 
       {capturing && (
         <CaptureSheet
