@@ -20,8 +20,32 @@
   --warn: #b35c00;
 }
 
+/*
+ * Dark: chosen in Settings (data-theme, set before first paint by the
+ * appearance script in app/layout.tsx), or the phone's setting if that script
+ * hasn't run. The accent colors are overridden inline from lib/appearance.ts.
+ */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #12151b;
+  --surface: #1b1f27;
+  --surface-2: #232834;
+  --border: #2f3542;
+  --text: #ece8e1;
+  --muted: #a39b8f;
+  --accent: #ff8a4c;
+  --accent-soft: #3a2418;
+  --on-accent: #1b1f27;
+  --ok: #69db7c;
+  --warn: #ffb35c;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --bg: #12151b;
     --surface: #1b1f27;
     --surface-2: #232834;
