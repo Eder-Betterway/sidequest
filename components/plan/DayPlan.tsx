@@ -16,6 +16,9 @@ import CaptureSheet, { dayChoices } from "@/components/notes/CaptureSheet";
 import DriveLegCard from "@/components/van/DriveLegCard";
 import VanSheet from "@/components/van/VanSheet";
 import { legsFor } from "@/lib/model/van";
+import QuestionsPanel from "./QuestionsPanel";
+import type { ChangeDraft } from "@/lib/model/draft";
+import type { Note } from "@/lib/model/note";
 
 const KIND_ICON: Record<ItemKind, string> = {
   activity: "●",
@@ -42,6 +45,8 @@ export default function DayPlan({
   inputs,
   plan,
   email,
+  notes,
+  drafts,
   selected: selectedProp,
   onSelect,
   onChangeDay,
@@ -50,6 +55,8 @@ export default function DayPlan({
   inputs: TripInputs;
   plan: PlanState;
   email: string;
+  notes: Note[];
+  drafts: ChangeDraft[];
   /** The open day, kept by the parent so the itinerary can open a day. Null: today if it's on the trip, else day 1. */
   selected: string | null;
   onSelect: (date: string) => void;
@@ -76,6 +83,7 @@ export default function DayPlan({
   const label = dayLabel(day.date);
   const van = inputs.modes.includes("campervan");
   const drives = van || inputs.modes.includes("car");
+  const dayDrafts = drafts.filter((d) => d.dayDate === day.date).length;
   const leg = drives
     ? legsFor(plan.days.map((d) => ({ date: d.date, base: d.base, place: d.place }))).find((l) => l.date === day.date)
     : undefined;
@@ -235,13 +243,15 @@ export default function DayPlan({
       </button>
       <div className="grid grid-cols-2 gap-2">
         <button type="button" onClick={() => onChangeDay(day.date)} className="min-h-11 rounded-xl border border-border text-sm font-medium text-accent">
-          Change this day
+          {dayDrafts ? `Change this day (${dayDrafts} draft${dayDrafts === 1 ? "" : "s"})` : "Change this day"}
         </button>
         <button type="button" onClick={() => setCapturing(true)} className="min-h-11 rounded-xl border border-border text-sm font-medium text-accent">
           Jot a tip or note
         </button>
       </div>
       <p className="text-center text-xs text-muted">Locked items stay put when you re-plan. Milestones start locked.</p>
+
+      <QuestionsPanel key={day.date} trip={trip} inputs={inputs} plan={plan} notes={notes} email={email} dayDate={day.date} />
 
       {vanOpen && day.place && (
         <VanSheet

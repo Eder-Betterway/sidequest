@@ -9,6 +9,9 @@ import { estimateLeg, formatHours } from "@/lib/model/van";
 import { formatTripDates } from "@/lib/model/trip";
 import { previewItems } from "@/lib/plan/brief";
 import type { PlanState } from "./usePlan";
+import type { ChangeDraft } from "@/lib/model/draft";
+import type { Note } from "@/lib/model/note";
+import QuestionsPanel from "./QuestionsPanel";
 
 
 function dayLabel(iso: string) {
@@ -29,16 +32,20 @@ export default function Itinerary({
   trip,
   inputs,
   plan,
+  notes,
+  drafts,
+  email,
   onOpenDay,
   onChange,
-  onAsk,
 }: {
   trip: Trip;
   inputs: TripInputs;
   plan: PlanState;
+  notes: Note[];
+  drafts: ChangeDraft[];
+  email: string;
   onOpenDay: (date: string) => void;
   onChange: (focusDate: string | null) => void;
-  onAsk?: () => void;
 }) {
   const units = inputs.units;
   const drives = inputs.modes.includes("campervan") || inputs.modes.includes("car");
@@ -57,6 +64,7 @@ export default function Itinerary({
   }, [plan.days, plan.items]);
 
   const pendingDays = new Set(plan.proposals.map((p) => p.dayDate));
+  const draftCount = (date: string) => drafts.filter((d) => d.dayDate === date).length;
 
   return (
     <div className="space-y-4">
@@ -65,16 +73,12 @@ export default function Itinerary({
         <p className="text-sm text-muted">
           {plan.days.length} days · {stays.length} {stays.length === 1 ? "stop" : "stops"}
         </p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => onChange(null)} className="min-h-12 rounded-xl bg-accent text-sm font-semibold text-on-accent">
-            Change the trip
-          </button>
-          {onAsk && (
-            <button type="button" onClick={onAsk} className="min-h-12 rounded-xl border border-border text-sm font-semibold">
-              Ask about the trip
-            </button>
-          )}
-        </div>
+        <button type="button" onClick={() => onChange(null)} className="mt-3 min-h-12 w-full rounded-xl bg-accent text-sm font-semibold text-on-accent">
+          {drafts.length ? `Review ${drafts.length} draft change${drafts.length === 1 ? "" : "s"}` : "Change the trip"}
+        </button>
+        {drafts.length > 0 && (
+          <p className="mt-1 text-center text-xs text-muted">Drafts go to Claude together when you suggest changes.</p>
+        )}
         {inputs.rules.length > 0 && (
           <div className="mt-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted">Rules every re-plan follows</p>
@@ -96,6 +100,8 @@ export default function Itinerary({
           </div>
         )}
       </section>
+
+      <QuestionsPanel trip={trip} inputs={inputs} plan={plan} notes={notes} email={email} dayDate={null} />
 
       {stays.map((stay, s) => {
         const prev = stays[s - 1];
@@ -138,6 +144,11 @@ export default function Itinerary({
                           ))}
                           {d.items.length > previewItems(d.items).length && (
                             <span className="block text-xs text-muted">+{d.items.length - previewItems(d.items).length} more</span>
+                          )}
+                          {draftCount(d.date) > 0 && (
+                            <span className="mr-1 mt-1 inline-block rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-semibold">
+                              {draftCount(d.date)} draft{draftCount(d.date) === 1 ? "" : "s"}
+                            </span>
                           )}
                           {pendingDays.has(d.date) && (
                             <span className="mt-1 inline-block rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent">
