@@ -9,6 +9,7 @@ import TripWizard from "@/components/plan/TripWizard";
 import OptionsView from "@/components/plan/OptionsView";
 import DayPlan from "@/components/plan/DayPlan";
 import { usePlan } from "@/components/plan/usePlan";
+import { useNotes } from "@/components/notes/useNotes";
 import TripVibeSheet from "@/components/plan/TripVibeSheet";
 import { Notice } from "./TripsView";
 
@@ -31,6 +32,7 @@ export default function PlanView({
 
 function OpenTrip({ trip, email, onDeleted }: { trip: Trip; email: string; onDeleted: () => void }) {
   const plan = usePlan(trip.id);
+  const { notes } = useNotes(trip.id);
   const inputs = readInputs(trip.inputs);
   const [wizard, setWizard] = useState(false);
   const [vibeOpen, setVibeOpen] = useState(false);
@@ -92,6 +94,7 @@ function OpenTrip({ trip, email, onDeleted }: { trip: Trip; email: string; onDel
                     optionIds: plan.options.map((o) => o.id),
                     dayIds: plan.days.map((d) => d.id),
                     itemIds: plan.items.map((i) => i.id),
+                    noteIds: notes.map((n) => n.id),
                   });
                   onDeleted();
                 }}

@@ -14,7 +14,8 @@ test("serves an installable manifest", async ({ request }) => {
 
 test("switches tabs", async ({ page }) => {
   await signIn(page, TESTER);
-  await page.getByRole("button", { name: "Notes" }).click();
-  await expect(page.getByRole("heading", { name: "Notes and local tips" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Notes" })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("button", { name: "Notes", exact: true }).click();
+  // Notes belong to a trip, and a fresh phone has none open yet.
+  await expect(page.getByRole("heading", { name: "No trip open" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Notes", exact: true })).toHaveAttribute("aria-current", "page");
 });

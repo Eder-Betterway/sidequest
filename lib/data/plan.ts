@@ -145,10 +145,11 @@ export function logAiRun(tripId: string, route: string, usage: Usage | null, me:
  */
 export function deleteTripWithPlan(
   tripId: string,
-  ids: { optionIds: string[]; dayIds: string[]; itemIds: string[] }
+  ids: { optionIds: string[]; dayIds: string[]; itemIds: string[]; noteIds?: string[] }
 ) {
   const d = db();
   const batch = writeBatch(d);
+  for (const id of ids.noteIds ?? []) batch.delete(doc(d, "trips", tripId, "notes", id));
   for (const id of ids.itemIds) batch.delete(doc(d, "trips", tripId, "items", id));
   for (const id of ids.dayIds) batch.delete(doc(d, "trips", tripId, "days", id));
   for (const id of ids.optionIds) batch.delete(doc(d, "trips", tripId, "options", id));

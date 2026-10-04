@@ -12,6 +12,7 @@ import type { PlanState } from "./usePlan";
 import DayTuner from "./DayTuner";
 import { stayRange } from "@/lib/plan/schedule";
 import PlaceSheet, { type PlaceTarget } from "@/components/place/PlaceSheet";
+import CaptureSheet, { dayChoices } from "@/components/notes/CaptureSheet";
 
 const KIND_ICON: Record<ItemKind, string> = {
   activity: "●",
@@ -52,6 +53,7 @@ export default function DayPlan({
     return dates.includes(today) ? today : dates[0];
   });
   const [editing, setEditing] = useState<StoredItem | "new" | null>(null);
+  const [capturing, setCapturing] = useState(false);
   const [placeOpen, setPlaceOpen] = useState<{ target: PlaceTarget; from: string; to: string } | null>(null);
 
   const day = plan.days.find((d) => d.date === selected) ?? plan.days[0];
@@ -211,7 +213,22 @@ export default function DayPlan({
       >
         + Add to this day
       </button>
+      <button type="button" onClick={() => setCapturing(true)} className="min-h-11 w-full text-sm font-medium text-accent">
+        Jot a tip or note for this day
+      </button>
       <p className="text-center text-xs text-muted">Locked items stay put when you re-plan. Milestones start locked.</p>
+
+      {capturing && (
+        <CaptureSheet
+          tripId={tripId}
+          email={email}
+          kinds={["tip", "note"]}
+          initialKind="tip"
+          days={dayChoices(plan.days)}
+          initialDay={day.date}
+          onClose={() => setCapturing(false)}
+        />
+      )}
 
       {placeOpen && (
         <PlaceSheet
