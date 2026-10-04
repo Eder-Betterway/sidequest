@@ -2,8 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { signIn, TESTER } from "./firebase";
 
 async function newTrip(page: Page, name: string) {
-  await page.getByRole("button", { name: "Trips" }).click();
-  await page.getByRole("button", { name: "New trip" }).click();
+  await page.getByRole("button", { name: /^Switch trip/ }).click();
+  await page.getByRole("dialog", { name: "Your trips" }).getByRole("button", { name: "New trip" }).click();
   await page.getByLabel("Name").fill(name);
   await page.getByLabel("Start").fill("2026-10-14");
   await page.getByLabel("End").fill("2026-10-18");

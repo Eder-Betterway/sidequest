@@ -74,8 +74,8 @@ test("ask about the whole trip or a single day without leaving the plan", async 
   await context.setOffline(false);
   await expect(q).toContainText("Short answer: yes.");
 
-  // Both also show up in the Ask tab.
-  await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Ask" }).click();
+  // Both also show up in Notes.
+  await page.getByRole("button", { name: "Notes", exact: true }).click();
   await expect(page.getByRole("article", { name: /Question: Will the trail/ })).toBeVisible();
   await expect(page.getByRole("article", { name: /Question: Does this line up/ })).toBeVisible();
 });

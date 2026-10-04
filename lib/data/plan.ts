@@ -1,12 +1,14 @@
 "use client";
 
-import { collection, deleteField, doc, orderBy, setDoc, updateDoc, deleteDoc, where, writeBatch, type FirestoreError } from "firebase/firestore";
+import { collection, deleteField, doc, orderBy, setDoc, updateDoc, where, writeBatch, type FirestoreError } from "firebase/firestore";
 import { getFirebase } from "@/lib/firebase/client";
 import type { TripInputs } from "@/lib/model/inputs";
 import type { Place, PlanItemDraft, StoredDay, StoredItem, StoredOption, TripOption } from "@/lib/model/plan";
 import type { PinnedItem } from "@/lib/plan/schedule";
 import { planWrites, type Proposal, type ProposalOp } from "@/lib/plan/proposal";
 import type { TripProposal } from "@/lib/plan/tripProposal";
+import { recordInBatch } from "./history";
+import type { HistoryEntry, SavedDay, SavedItem } from "@/lib/model/history";
 import type { Vibe, VibeOverride } from "@/lib/plan/vibe";
 import type { Usage } from "@/lib/ai/claude";
 import { watchCollection } from "./watch";
@@ -118,8 +120,20 @@ export function updateItem(tripId: string, id: string, patch: Partial<Omit<Store
   );
 }
 
-export function deleteItem(tripId: string, id: string) {
-  deleteDoc(doc(db(), "trips", tripId, "items", id)).catch(fail("deleting an item"));
+/** Remove an item from the plan; it can be put back from the change history. */
+export function deleteItem(tripId: string, item: SavedItem, me: string): HistoryEntry {
+  const batch = writeBatch(db());
+  batch.delete(doc(db(), "trips", tripId, "items", item.id));
+  const entry = recordInBatch(batch, tripId, {
+    kind: "delete",
+    label: `Removed "${item.title}"`,
+    dayDates: [item.dayDate],
+    by: me,
+    at: Date.now(),
+    undo: { addedIds: [], items: [item], days: [] },
+  });
+  batch.commit().catch(fail("deleting an item"));
+  return entry;
 }
 
 /** Swap two items' order (move up/down). */
@@ -200,13 +214,18 @@ export function acceptProposal(
   proposal: Proposal,
   keep: Set<string>,
   dayItems: StoredItem[],
+  day: SavedDay,
   plannedVibe: Vibe,
   me: string
-) {
+): HistoryEntry {
   const d = db();
   const batch = writeBatch(d);
   const now = Date.now();
-  for (const w of planWrites(proposal.ops as ProposalOp[], keep, dayItems)) {
+  const addedIds: string[] = [];
+  const before: SavedItem[] = [];
+  const byId = new Map(dayItems.map((i) => [i.id, i]));
+  const writes = planWrites(proposal.ops as ProposalOp[], keep, dayItems);
+  for (const w of writes) {
     if (w.type === "add") {
       const item: Omit<StoredItem, "id"> = {
         ...w.item,
@@ -218,8 +237,14 @@ export function acceptProposal(
         updatedAt: now,
         updatedBy: me,
       };
-      batch.set(doc(collection(d, "trips", tripId, "items")), item);
-    } else if (w.type === "update") {
+      const ref = doc(collection(d, "trips", tripId, "items"));
+      addedIds.push(ref.id);
+      batch.set(ref, item);
+      continue;
+    }
+    const was = byId.get(w.itemId);
+    if (was) before.push(was);
+    if (w.type === "update") {
       batch.update(doc(d, "trips", tripId, "items", w.itemId), { ...w.patch, updatedAt: now, updatedBy: me });
     } else {
       batch.delete(doc(d, "trips", tripId, "items", w.itemId));
@@ -227,7 +252,16 @@ export function acceptProposal(
   }
   batch.update(doc(d, "trips", tripId, "proposals", proposal.id), { status: "accepted" });
   batch.update(doc(d, "trips", tripId, "days", proposal.dayDate), { plannedVibe, updatedAt: now });
+  const entry = recordInBatch(batch, tripId, {
+    kind: "suggestion",
+    label: `Applied ${writes.length} change${writes.length === 1 ? "" : "s"} to ${proposal.dayDate}`,
+    dayDates: [proposal.dayDate],
+    by: me,
+    at: now,
+    undo: { addedIds, items: before, days: [day] },
+  });
   batch.commit().catch(fail("applying the suggestion"));
+  return entry;
 }
 
 // ---------- Trip-wide suggestions and rules ----------
@@ -253,12 +287,24 @@ export function dismissTripProposal(tripId: string, id: string) {
  * location) and apply its item changes. Locked items are skipped no matter
  * what the suggestion says.
  */
-export function acceptTripProposal(tripId: string, p: TripProposal, keepDates: Set<string>, items: StoredItem[], me: string) {
+export function acceptTripProposal(
+  tripId: string,
+  p: TripProposal,
+  keepDates: Set<string>,
+  items: StoredItem[],
+  days: SavedDay[],
+  me: string
+): HistoryEntry {
   const d = db();
   const batch = writeBatch(d);
   const now = Date.now();
+  const addedIds: string[] = [];
+  const beforeItems: SavedItem[] = [];
+  const beforeDays: SavedDay[] = [];
   for (const change of p.days) {
     if (!keepDates.has(change.date)) continue;
+    const dayBefore = days.find((x) => x.date === change.date);
+    if (dayBefore) beforeDays.push(dayBefore);
     const moved = change.after.base !== change.before.base;
     batch.update(doc(d, "trips", tripId, "days", change.date), {
       base: change.after.base,
@@ -267,6 +313,7 @@ export function acceptTripProposal(tripId: string, p: TripProposal, keepDates: S
       updatedAt: now,
     });
     const dayItems = items.filter((i) => i.dayDate === change.date);
+    const byId = new Map(dayItems.map((i) => [i.id, i]));
     const all = new Set(change.ops.map((o) => o.key));
     for (const w of planWrites(change.ops, all, dayItems)) {
       if (w.type === "add") {
@@ -280,8 +327,14 @@ export function acceptTripProposal(tripId: string, p: TripProposal, keepDates: S
           updatedAt: now,
           updatedBy: me,
         };
-        batch.set(doc(collection(d, "trips", tripId, "items")), item);
-      } else if (w.type === "update") {
+        const ref = doc(collection(d, "trips", tripId, "items"));
+        addedIds.push(ref.id);
+        batch.set(ref, item);
+        continue;
+      }
+      const was = byId.get(w.itemId);
+      if (was) beforeItems.push(was);
+      if (w.type === "update") {
         batch.update(doc(d, "trips", tripId, "items", w.itemId), { ...w.patch, updatedAt: now, updatedBy: me });
       } else {
         batch.delete(doc(d, "trips", tripId, "items", w.itemId));
@@ -291,7 +344,17 @@ export function acceptTripProposal(tripId: string, p: TripProposal, keepDates: S
   // The drafts it answered are done.
   for (const id of p.draftIds ?? []) batch.delete(doc(d, "trips", tripId, "drafts", id));
   batch.update(doc(d, "trips", tripId, "tripProposals", p.id), { status: "accepted" });
+  const n = beforeDays.length;
+  const entry = recordInBatch(batch, tripId, {
+    kind: "trip-suggestion",
+    label: `Changed ${n} day${n === 1 ? "" : "s"}: "${p.instruction.slice(0, 80)}${p.instruction.length > 80 ? "..." : ""}"`,
+    dayDates: beforeDays.map((x) => x.date),
+    by: me,
+    at: now,
+    undo: { addedIds, items: beforeItems, days: beforeDays },
+  });
   batch.commit().catch(fail("applying the trip suggestion"));
+  return entry;
 }
 
 /** Replace the trip's rules (the "keep as a rule" requests). */

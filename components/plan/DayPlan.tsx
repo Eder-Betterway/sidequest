@@ -17,6 +17,7 @@ import DriveLegCard from "@/components/van/DriveLegCard";
 import VanSheet from "@/components/van/VanSheet";
 import { legsFor } from "@/lib/model/van";
 import QuestionsPanel from "./QuestionsPanel";
+import { offerUndo } from "./undo";
 import type { ChangeDraft } from "@/lib/model/draft";
 import type { Note } from "@/lib/model/note";
 
@@ -303,7 +304,7 @@ export default function DayPlan({
             editing === "new"
               ? undefined
               : () => {
-                  deleteItem(tripId, editing.id);
+                  offerUndo(tripId, deleteItem(tripId, editing, email), email);
                   setEditing(null);
                 }
           }

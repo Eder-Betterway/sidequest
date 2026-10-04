@@ -12,6 +12,8 @@ import type { PlanState } from "./usePlan";
 import type { ChangeDraft } from "@/lib/model/draft";
 import type { Note } from "@/lib/model/note";
 import QuestionsPanel from "./QuestionsPanel";
+import ChangesCard from "./ChangesCard";
+import type { HistoryEntry } from "@/lib/model/history";
 
 
 function dayLabel(iso: string) {
@@ -34,6 +36,7 @@ export default function Itinerary({
   plan,
   notes,
   drafts,
+  history,
   email,
   onOpenDay,
   onChange,
@@ -43,6 +46,7 @@ export default function Itinerary({
   plan: PlanState;
   notes: Note[];
   drafts: ChangeDraft[];
+  history: HistoryEntry[];
   email: string;
   onOpenDay: (date: string) => void;
   onChange: (focusDate: string | null) => void;
@@ -68,6 +72,7 @@ export default function Itinerary({
 
   return (
     <div className="space-y-4">
+      <ChangesCard trip={trip} email={email} plan={plan} notes={notes} history={history} />
       <section className="rounded-2xl border border-border bg-surface p-4">
         <h2 className="font-semibold">Your itinerary</h2>
         <p className="text-sm text-muted">

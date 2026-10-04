@@ -6,6 +6,7 @@
 const KEYS = {
   activeTrip: "sidequest_active_trip",
   partnerEmail: "sidequest_partner_email",
+  lastSeen: "sidequest_last_seen_",
 } as const;
 
 function get(key: string): string | null {
@@ -31,4 +32,10 @@ export const prefs = {
   /** Remembered so the next new trip pre-fills your travel partner. */
   partnerEmail: () => get(KEYS.partnerEmail) ?? "",
   setPartnerEmail: (email: string) => set(KEYS.partnerEmail, email || null),
+  /** When this phone last caught up on a trip's changes, for "since you last looked". */
+  lastSeen: (tripId: string): number | null => {
+    const v = Number(get(KEYS.lastSeen + tripId));
+    return Number.isFinite(v) && v > 0 ? v : null;
+  },
+  setLastSeen: (tripId: string, at: number) => set(KEYS.lastSeen + tripId, String(at)),
 };

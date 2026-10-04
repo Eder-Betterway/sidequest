@@ -5,7 +5,8 @@ import { useOnline } from "@/components/shell/useOnline";
 import { usePlan } from "@/components/plan/usePlan";
 import ProposalSheet from "@/components/plan/ProposalSheet";
 import { replanDay } from "@/components/plan/replan";
-import { Notice } from "@/components/trip/TripsView";
+import { Notice } from "@/components/ui/Notice";
+import { Segmented } from "@/components/ui/fields";
 import { callAi, todayIso } from "@/lib/ai/client";
 import type { Usage } from "@/lib/ai/claude";
 import { acceptProposal, dismissProposal } from "@/lib/data/plan";
@@ -19,18 +20,22 @@ import CaptureSheet, { dayChoices } from "./CaptureSheet";
 import NoteCard, { type Work } from "./NoteCard";
 import { useNotes } from "./useNotes";
 import { askQuestion } from "./ask";
+import { offerUndo } from "@/components/plan/undo";
 
 /**
  * The Notes and Ask tabs. Capture works with no signal; when the phone that
  * asked (or snapped a flyer) is back online, questions get answered and flyers
  * get read without anyone tapping anything.
  */
-export default function NotesArea({ trip, email, tab }: { trip: Trip; email: string; tab: "notes" | "ask" }) {
+type Filter = "all" | "notes" | "questions";
+
+export default function NotesArea({ trip, email }: { trip: Trip; email: string }) {
   const plan = usePlan(trip.id);
   const { loaded, notes } = useNotes(trip.id);
   const inputs = readInputs(trip.inputs);
   const online = useOnline();
   const [capture, setCapture] = useState<NoteKind | null>(null);
+  const [filter, setFilter] = useState<Filter>("all");
   const [work, setWork] = useState<Record<string, Work>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [reviewDay, setReviewDay] = useState<string | null>(null);
@@ -120,44 +125,39 @@ export default function NotesArea({ trip, email, tab }: { trip: Trip; email: str
 
   if (!loaded) return <p className="py-6 text-center text-sm text-muted">Loading...</p>;
 
-  const shown = notes.filter((n) => (tab === "ask" ? n.kind === "question" : n.kind !== "question"));
+  const shown = notes.filter((n) => filter === "all" || (filter === "questions" ? n.kind === "question" : n.kind !== "question"));
   const reviewing = reviewDay ? plan.proposals.filter((p) => p.dayDate === reviewDay).at(-1) : undefined;
   const reviewDayRecord = plan.days.find((d) => d.date === reviewDay);
   const startDay = defaultNoteDay(dates, todayIso());
 
   return (
     <div className="space-y-4">
-      {tab === "notes" ? (
-        <section className="rounded-2xl border border-border bg-surface p-4">
-          <h2 className="font-semibold">Capture it before you forget</h2>
-          <p className="mt-1 text-sm text-muted">Works with no signal. Tips can become plan suggestions, and flyers become plan items.</p>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {(
-              [
-                ["tip", "Local tip"],
-                ["note", "Note"],
-                ["flyer", "Flyer photo"],
-              ] as const
-            ).map(([k, label]) => (
-              <button key={k} type="button" onClick={() => setCapture(k)} className="min-h-12 rounded-xl border border-border text-sm font-semibold">
-                {label}
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : (
-        <section className="rounded-2xl border border-border bg-surface p-4">
-          <h2 className="font-semibold">Ask anything about the trip</h2>
-          <p className="mt-1 text-sm text-muted">Answered with your plan, notes, and the web in mind. Ask with no signal and it&apos;s answered when you&apos;re back online.</p>
-          <button type="button" onClick={() => setCapture("question")} className="mt-3 min-h-12 w-full rounded-xl bg-accent font-semibold text-on-accent">
-            Ask a question
-          </button>
-        </section>
-      )}
+      <section className="rounded-2xl border border-border bg-surface p-4">
+        <h2 className="font-semibold">Capture it before you forget</h2>
+        <p className="mt-1 text-sm text-muted">
+          Works with no signal. Tips can become plan suggestions, flyers become plan items, and questions get answered with your trip in mind.
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {(
+            [
+              ["tip", "Local tip"],
+              ["note", "Note"],
+              ["flyer", "Flyer photo"],
+              ["question", "Question"],
+            ] as const
+          ).map(([k, label]) => (
+            <button key={k} type="button" onClick={() => setCapture(k)} className="min-h-12 rounded-xl border border-border text-sm font-semibold">
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {notes.length > 0 && <Segmented label="Show" options={["all", "notes", "questions"] as const} value={filter} onChange={setFilter} />}
 
       {shown.length === 0 ? (
         <p className="py-4 text-center text-sm text-muted">
-          {tab === "ask" ? "No questions yet." : "Nothing yet. The best tips come from bartenders, rangers, and the person next to you at the hot spring."}
+          {filter === "questions" ? "No questions yet." : "Nothing yet. The best tips come from bartenders, rangers, and the person next to you at the hot spring."}
         </p>
       ) : (
         <div className="space-y-3">
@@ -175,7 +175,7 @@ export default function NotesArea({ trip, email, tab }: { trip: Trip; email: str
               onAsk={() => void ask(n)}
               onRead={() => void read(n)}
               onPlan={(d) => void workIn(n, d)}
-              onAddEvents={(picks: { dayDate: string; item: PlanItemDraft }[]) => addFlyerEventsToPlan(trip.id, n.id, picks, plan.items, email)}
+              onAddEvents={(picks: { dayDate: string; item: PlanItemDraft }[]) => offerUndo(trip.id, addFlyerEventsToPlan(trip.id, n.id, picks, plan.items, email), email)}
               onDelete={() => deleteNote(trip.id, n.id)}
             />
           ))}
@@ -205,7 +205,11 @@ export default function NotesArea({ trip, email, tab }: { trip: Trip; email: str
             setReviewDay(null);
           }}
           onApply={(keep) => {
-            acceptProposal(trip.id, reviewing, keep, dayItems(reviewDayRecord.date), effectiveVibe(inputs.vibe, reviewDayRecord.vibe), email);
+            offerUndo(
+              trip.id,
+              acceptProposal(trip.id, reviewing, keep, dayItems(reviewDayRecord.date), reviewDayRecord, effectiveVibe(inputs.vibe, reviewDayRecord.vibe), email),
+              email
+            );
             setReviewDay(null);
           }}
         />
@@ -216,5 +220,5 @@ export default function NotesArea({ trip, email, tab }: { trip: Trip; email: str
 
 /** Shown on the Notes and Ask tabs when no trip is open. */
 export function NoTripOpen() {
-  return <Notice title="No trip open">Pick a trip on the Trips tab first. Notes and questions belong to a trip.</Notice>;
+  return <Notice title="No trip open">Pick a trip from the name at the top, or start a new one. Notes and questions belong to a trip.</Notice>;
 }
