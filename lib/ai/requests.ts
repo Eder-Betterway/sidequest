@@ -66,6 +66,39 @@ export const HoursRequestSchema = z.object({
   near: z.object({ lat: z.number(), lng: z.number() }).nullable().default(null),
 });
 
+const PlanItemBrief = z.object({
+  start: z.string().max(5).nullable(),
+  title: z.string().max(200),
+  place: z.string().max(200).nullable(),
+  locked: z.boolean(),
+});
+
+export const AskRequestSchema = z.object({
+  trip: TripBriefSchema,
+  inputs: TripInputsSchema,
+  question: z.string().min(1).max(1000),
+  /** The day it's about, if any. */
+  dayDate: ISO.nullable().default(null),
+  /** The plan as it stands, so answers fit it. */
+  days: z
+    .array(z.object({ date: ISO, base: z.string().max(200), title: z.string().max(200), items: z.array(PlanItemBrief).max(40) }))
+    .max(60)
+    .default([]),
+  /** Recent notes and tips, newest first. */
+  notes: z.array(z.string().max(1000)).max(30).default([]),
+  today: ISO,
+});
+
+export const FlyerRequestSchema = z.object({
+  trip: TripBriefSchema,
+  /** Shrunk JPEG from the phone, base64 without the "data:" prefix. */
+  image: z.string().min(100).max(1_400_000),
+  mediaType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  /** Where they were when they snapped it. */
+  near: z.string().max(200).nullable().default(null),
+  today: ISO,
+});
+
 /** Trips longer than this would cost a lot per generation; plan them in parts. */
 export const MAX_TRIP_DAYS = 45;
 

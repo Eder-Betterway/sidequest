@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   const { trip, inputs, day, items, vibe, note, today } = body.data;
 
   if (process.env.AI_MOCK === "1") {
-    return Response.json({ ...mockReplan(items, vibe), usage: null });
+    return Response.json({ ...mockReplan(items, vibe, note), usage: null });
   }
 
   const result = await runStructured({

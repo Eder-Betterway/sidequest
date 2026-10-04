@@ -8,21 +8,10 @@ import SetupNeeded from "./SetupNeeded";
 import SignIn from "@/components/auth/SignIn";
 import { useAuth } from "@/components/auth/useAuth";
 import { useTrips } from "@/components/trip/useTrips";
-import TripsView, { Notice } from "@/components/trip/TripsView";
+import TripsView from "@/components/trip/TripsView";
 import PlanView from "@/components/trip/PlanView";
+import NotesArea, { NoTripOpen } from "@/components/notes/NotesArea";
 import { prefs } from "@/lib/prefs";
-
-// Tabs that don't have their real screen yet, and which build step brings it.
-const COMING: Partial<Record<TabId, { title: string; body: string }>> = {
-  notes: {
-    title: "Notes and local tips",
-    body: "Jot what a local told you, snap a flyer, or ask a question. Works with no signal, and turns into plan changes you accept or skip. Coming with the local-tips step.",
-  },
-  ask: {
-    title: "Ask anything",
-    body: "Questions about the trip, answered with your plan and notes in mind. Coming with the local-tips step.",
-  },
-};
 
 export default function AppShell() {
   const auth = useAuth();
@@ -46,8 +35,7 @@ function SignedIn({ email }: { email: string }) {
     prefs.setActiveTrip(id);
   }
 
-  const heading = tab === "plan" && active ? active.title : "Sidequest";
-  const coming = COMING[tab];
+  const heading = tab !== "trips" && active ? active.title : "Sidequest";
 
   return (
     <div className="flex h-full flex-col">
@@ -87,7 +75,15 @@ function SignedIn({ email }: { email: string }) {
                 }}
               />
             ))}
-          {coming && <Notice title={coming.title}>{coming.body}</Notice>}
+          {(tab === "notes" || tab === "ask") &&
+            (trips.status === "loading" ? (
+              <p className="py-6 text-center text-sm text-muted">Loading...</p>
+            ) : active ? (
+              // Keyed by trip only, so switching between Notes and Ask keeps work in flight.
+              <NotesArea key={active.id} trip={active} email={email} tab={tab} />
+            ) : (
+              <NoTripOpen />
+            ))}
         </div>
       </main>
 

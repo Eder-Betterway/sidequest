@@ -1,5 +1,6 @@
 import { dayCount, type TripInputs } from "@/lib/model/inputs";
 import type { DayDraft, PlanItemDraft, TripOption } from "@/lib/model/plan";
+import type { FlyerEvent } from "@/lib/model/note";
 import type { Holiday, HoursResult, PlaceInfo, Source, WeatherDay, WikiSummary } from "@/lib/model/place";
 
 /**
@@ -58,11 +59,20 @@ export function mockDays(dates: { date: string; stop: string }[]): DayDraft[] {
  */
 export function mockReplan(
   items: (PlanItemDraft & { locked: boolean })[],
-  vibe: { pace: number }
+  vibe: { pace: number },
+  note: string | null = null
 ): { summary: string; items: PlanItemDraft[] } {
   const unlocked: PlanItemDraft[] = items
     .filter((i) => !i.locked)
     .map((i) => ({ kind: i.kind, title: i.title, start: i.start, end: i.end, place: i.place, notes: i.notes }));
+  if (note) {
+    // A tip: work it in as one new item, keep the rest.
+    const gist = note.split("\n")[0].slice(0, 60);
+    return {
+      summary: "Worked your tip into the day.",
+      items: [...unlocked, { kind: "activity", title: `Tip: ${gist}`, start: "16:00", end: "17:00", place: null, notes: "From your note" }],
+    };
+  }
   if (vibe.pace < 40) {
     const kept = unlocked.filter((i) => i.kind !== "activity" || i.title.toLowerCase().includes("sunset"));
     return {
@@ -121,5 +131,23 @@ export function mockHours(query: string): HoursResult {
     lines: ["Monday: 8:00 AM to 5:00 PM", "Tuesday: Closed"],
     mapsUrl: "https://maps.google.com/?cid=1",
     checkedAt: Date.now(),
+  };
+}
+
+// ---------- Notes stand-ins ----------
+
+export function mockAnswer(question: string): { text: string; sources: { title: string; url: string }[] } {
+  return {
+    text: `Short answer: yes. For "${question.slice(0, 80)}", go early and check the posted hours before you drive over.`,
+    sources: [{ title: "Example visitor guide", url: "https://example.com/guide" }],
+  };
+}
+
+export function mockFlyer(startDate: string): { events: FlyerEvent[] } {
+  return {
+    events: [
+      { title: "Night market", date: startDate, start: "18:00", end: "22:00", place: "Main street", notes: "Cash only" },
+      { title: "Open mic", date: null, start: "20:00", end: null, place: "The corner cafe", notes: "" },
+    ],
   };
 }

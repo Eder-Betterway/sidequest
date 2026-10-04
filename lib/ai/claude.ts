@@ -31,6 +31,8 @@ export interface StructuredCall<S extends z.ZodType> {
   /** Stable instructions. Cached, so keep anything that varies per request out of it. */
   system: string;
   prompt: string;
+  /** Photos sent ahead of the prompt (base64, no "data:" prefix). */
+  images?: { mediaType: "image/jpeg" | "image/png" | "image/webp"; data: string }[];
   schema: S;
   maxTokens?: number;
 }
@@ -53,7 +55,18 @@ export async function runStructured<S extends z.ZodType>(call: StructuredCall<S>
       model: MODELS[call.role],
       max_tokens: call.maxTokens ?? 16000,
       system: [{ type: "text", text: call.system, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content: call.prompt }],
+      messages: [
+        {
+          role: "user",
+          content: [
+            ...(call.images ?? []).map((img) => ({
+              type: "image" as const,
+              source: { type: "base64" as const, media_type: img.mediaType, data: img.data },
+            })),
+            { type: "text" as const, text: call.prompt },
+          ],
+        },
+      ],
       output_config: {
         ...(call.role === "quick" ? {} : { effort: call.effort }),
         format: betaZodOutputFormat(call.schema),
