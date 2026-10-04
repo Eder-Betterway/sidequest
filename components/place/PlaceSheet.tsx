@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import Sheet from "@/components/ui/Sheet";
 import { useOnline } from "@/components/shell/useOnline";
 import { useNow } from "@/components/shell/useNow";
-import { callAi, todayIso } from "@/lib/ai/client";
-import type { Usage } from "@/lib/ai/claude";
-import { saveCachedPlace, saveTripPlaceInfo, watchCachedPlace, watchTripPlaceInfo } from "@/lib/data/places";
+import { callAi } from "@/lib/ai/client";
+import { loadPlace, type PlaceTarget } from "./loadPlace";
+import { watchCachedPlace, watchTripPlaceInfo } from "@/lib/data/places";
 import { sunTimes } from "@/lib/grounding/sun";
 import type { TripInputs } from "@/lib/model/inputs";
 import {
@@ -15,26 +15,14 @@ import {
   placeKey,
   tempIn,
   type CachedPlace,
-  type Holiday,
   type HoursResult,
-  type PlaceInfo,
-  type Source,
   type TripPlaceInfo,
-  type WeatherDay,
-  type WikiSummary,
 } from "@/lib/model/place";
 import { formatTime } from "@/lib/model/plan";
 import { formatTripDates, type Trip } from "@/lib/model/trip";
 
-export interface PlaceTarget {
-  name: string;
-  lat: number | null;
-  lng: number | null;
-  timezone: string | null;
-  countryCode: string | null;
-}
+export type { PlaceTarget };
 
-type Facts = { wiki: WikiSummary | null; weather: { kind: "forecast" | "last-year"; days: WeatherDay[] } | null; holidays: Holiday[] };
 
 /**
  * Everything worth knowing about a stop for these dates. Loads once with
@@ -73,50 +61,12 @@ export default function PlaceSheet({
   useEffect(() => watchTripPlaceInfo(trip.id, key, setSaved), [trip.id, key]);
 
   async function load() {
-    if (!trip.startDate || !trip.endDate) return;
     setBusy(true);
     setError(null);
-    const today = todayIso();
-    const facts = await callAi<Facts>("/api/place/facts", {
-      place: { name: target.name, lat: target.lat, lng: target.lng, countryCode: target.countryCode },
-      from,
-      to,
-      today,
-    });
-    if (!facts.ok) {
-      setBusy(false);
-      return setError(facts.error);
-    }
-    const ai = await callAi<{ info: PlaceInfo; sources: Source[]; usage: Usage | null }>("/api/ai/place", {
-      trip: { title: trip.title, startDate: trip.startDate, endDate: trip.endDate },
-      inputs,
-      place: { name: target.name },
-      from,
-      to,
-      today,
-      wiki: facts.data.wiki,
-    });
+    const res = await loadPlace({ trip, inputs, target, from, to, email, previous: saved });
     setBusy(false);
-    const now = Date.now();
-    saveCachedPlace({ key, name: target.name, wiki: facts.data.wiki, refreshedAt: now });
-    saveTripPlaceInfo(
-      trip.id,
-      {
-        key,
-        name: target.name,
-        info: ai.ok ? ai.data.info : (saved?.info ?? null),
-        sources: ai.ok ? ai.data.sources : (saved?.sources ?? []),
-        weather: facts.data.weather?.days ?? [],
-        weatherKind: facts.data.weather?.kind ?? null,
-        holidays: facts.data.holidays,
-        from,
-        to,
-        fetchedAt: now,
-      },
-      ai.ok ? ai.data.usage : null,
-      email
-    );
-    if (!ai.ok) setError(`The write-up didn't load: ${ai.error} The facts below are saved.`);
+    if (!res.ok) return setError(res.error);
+    if (res.writeUpError) setError(`The write-up didn't load: ${res.writeUpError} The facts below are saved.`);
   }
 
   // First visit with signal: load automatically. After that, refresh is a tap.

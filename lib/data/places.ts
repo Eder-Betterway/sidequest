@@ -1,6 +1,6 @@
 "use client";
 
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import { getFirebase } from "@/lib/firebase/client";
 import type { CachedPlace, TripPlaceInfo } from "@/lib/model/place";
 import type { Usage } from "@/lib/ai/claude";
@@ -47,4 +47,14 @@ export function watchTripPlaceInfo(tripId: string, key: string, onData: (p: Trip
 export function saveTripPlaceInfo(tripId: string, info: TripPlaceInfo, usage: Usage | null, me: string) {
   setDoc(doc(db(), "trips", tripId, "placeInfo", info.key), info).catch(fail("saving the place details"));
   logAiRun(tripId, "place", usage, me);
+}
+
+/** The saved details for a place on this trip, from the phone's copy if there's no signal. */
+export async function readTripPlaceInfo(tripId: string, key: string): Promise<TripPlaceInfo | null> {
+  try {
+    const snap = await getDoc(doc(db(), "trips", tripId, "placeInfo", key));
+    return snap.exists() ? (snap.data() as TripPlaceInfo) : null;
+  } catch {
+    return null;
+  }
 }

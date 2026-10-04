@@ -1,6 +1,6 @@
 "use client";
 
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import { getFirebase } from "@/lib/firebase/client";
 import type { DriveLeg, NearbySpots } from "@/lib/model/van";
 
@@ -43,4 +43,13 @@ export function watchNearby(tripId: string, key: string, onData: (n: NearbySpots
 
 export function saveNearby(tripId: string, n: Omit<NearbySpots, "fetchedAt">) {
   setDoc(doc(db(), "trips", tripId, "van", n.key), { ...n, fetchedAt: Date.now() }).catch(fail("saving nearby spots"));
+}
+
+/** Whether a van lookup (spots near a stop, or a drive) is already saved. */
+export async function hasVanDoc(tripId: string, key: string): Promise<boolean> {
+  try {
+    return (await getDoc(doc(db(), "trips", tripId, "van", key))).exists();
+  } catch {
+    return false;
+  }
 }

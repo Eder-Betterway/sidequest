@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Sheet from "@/components/ui/Sheet";
 import { useOnline } from "@/components/shell/useOnline";
-import { callAi } from "@/lib/ai/client";
-import { saveNearby, watchNearby } from "@/lib/data/van";
+import { loadSpots } from "./load";
+import { watchNearby } from "@/lib/data/van";
 import type { TripInputs } from "@/lib/model/inputs";
 import { placeKey } from "@/lib/model/place";
 import {
@@ -49,10 +49,9 @@ export default function VanSheet({
   async function load() {
     setBusy(true);
     setError(null);
-    const res = await callAi<{ spots: VanSpot[] }>("/api/van/nearby", { place: { name: place.name, lat: place.lat, lng: place.lng } });
+    const res = await loadSpots(tripId, place);
     setBusy(false);
     if (!res.ok) return setError(res.error);
-    saveNearby(tripId, { key, name: place.name, spots: res.data.spots });
   }
 
   useEffect(() => {
