@@ -51,8 +51,10 @@ test("from trip details to three options to a day plan you can edit", async ({ p
   await expect(page.getByRole("article")).toHaveCount(3);
   await expect(page.getByRole("heading", { name: "Slow and deep" })).toBeVisible();
 
-  // Pick one: the day plan appears, one chip per day.
+  // Pick one: the itinerary appears, one row per day; open the first.
   await page.getByRole("button", { name: "Pick this one" }).first().click();
+  await expect(page.getByRole("button", { name: /^Day \d+, / })).toHaveCount(5);
+  await page.getByRole("button", { name: /Day 1, Wednesday, Oct 14/ }).click();
   await expect(page.getByRole("navigation", { name: "Days" }).getByRole("button")).toHaveCount(5);
   await expect(page.getByLabel("Sun times")).toContainText("Sunrise");
 

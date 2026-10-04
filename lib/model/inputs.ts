@@ -106,6 +106,8 @@ export const TripInputsSchema = z.object({
   units: z.enum(["imperial", "metric"]).default("imperial"),
   homeCurrency: z.string().length(3).default("USD"),
   extraNotes: z.string().max(1000).default(""),
+  /** Hard rules set while planning ("Stay in Palm Springs through Nov 14"). Every re-plan follows them. */
+  rules: z.array(z.string().max(400)).max(30).default([]),
 });
 export type TripInputs = z.infer<typeof TripInputsSchema>;
 

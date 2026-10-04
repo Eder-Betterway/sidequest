@@ -4,6 +4,7 @@ import { ASK_SYSTEM, askPrompt } from "@/lib/ai/prompts/ask";
 import { describeTrip } from "@/lib/ai/prompts/trip-context";
 import { AskRequestSchema, readJson } from "@/lib/ai/requests";
 import { research } from "@/lib/ai/research";
+import { weatherBrief } from "@/lib/grounding/weather-brief";
 
 export const maxDuration = 300;
 
@@ -20,7 +21,8 @@ export async function POST(req: Request) {
 
   if (process.env.AI_MOCK === "1") return Response.json({ ...mockAnswer(question), usage: null });
 
-  const result = await research(ASK_SYSTEM, askPrompt(describeTrip(trip, inputs, today), question, dayDate, days, notes), 3);
+  const weather = await weatherBrief(days, today);
+  const result = await research(ASK_SYSTEM, askPrompt(describeTrip(trip, inputs, today), question, dayDate, days, notes, weather), 3);
   if (!result.ok) return Response.json({ error: result.error }, { status: result.status });
   return Response.json({ text: result.notes, sources: result.sources, usage: result.usage });
 }

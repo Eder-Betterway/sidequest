@@ -6,6 +6,7 @@ import type { TripInputs } from "@/lib/model/inputs";
 import type { Place, PlanItemDraft, StoredDay, StoredItem, StoredOption, TripOption } from "@/lib/model/plan";
 import type { PinnedItem } from "@/lib/plan/schedule";
 import { planWrites, type Proposal, type ProposalOp } from "@/lib/plan/proposal";
+import type { TripProposal } from "@/lib/plan/tripProposal";
 import type { Vibe, VibeOverride } from "@/lib/plan/vibe";
 import type { Usage } from "@/lib/ai/claude";
 import { watchCollection } from "./watch";
@@ -226,4 +227,71 @@ export function acceptProposal(
   batch.update(doc(d, "trips", tripId, "proposals", proposal.id), { status: "accepted" });
   batch.update(doc(d, "trips", tripId, "days", proposal.dayDate), { plannedVibe, updatedAt: now });
   batch.commit().catch(fail("applying the suggestion"));
+}
+
+// ---------- Trip-wide suggestions and rules ----------
+
+export function watchTripProposals(tripId: string, onData: (rows: (TripProposal & { pending: boolean })[]) => void) {
+  return watchCollection<TripProposal>(`trips/${tripId}/tripProposals`, `trip-proposals-${tripId}`, [where("status", "==", "pending")], onData);
+}
+
+/** Save a trip-wide suggestion, retiring any earlier pending ones. */
+export function saveTripProposal(tripId: string, p: Omit<TripProposal, "id" | "status">, previous: string[]) {
+  const batch = writeBatch(db());
+  for (const id of previous) batch.update(doc(db(), "trips", tripId, "tripProposals", id), { status: "dismissed" });
+  batch.set(doc(collection(db(), "trips", tripId, "tripProposals")), { ...p, status: "pending" });
+  batch.commit().catch(fail("saving the trip suggestion"));
+}
+
+export function dismissTripProposal(tripId: string, id: string) {
+  updateDoc(doc(db(), "trips", tripId, "tripProposals", id), { status: "dismissed" }).catch(fail("dismissing the trip suggestion"));
+}
+
+/**
+ * Apply the days you kept, in one batch: move the day's base (and its map
+ * location) and apply its item changes. Locked items are skipped no matter
+ * what the suggestion says.
+ */
+export function acceptTripProposal(tripId: string, p: TripProposal, keepDates: Set<string>, items: StoredItem[], me: string) {
+  const d = db();
+  const batch = writeBatch(d);
+  const now = Date.now();
+  for (const change of p.days) {
+    if (!keepDates.has(change.date)) continue;
+    const moved = change.after.base !== change.before.base;
+    batch.update(doc(d, "trips", tripId, "days", change.date), {
+      base: change.after.base,
+      title: change.after.title,
+      ...(moved ? { place: change.after.place } : {}),
+      updatedAt: now,
+    });
+    const dayItems = items.filter((i) => i.dayDate === change.date);
+    const all = new Set(change.ops.map((o) => o.key));
+    for (const w of planWrites(change.ops, all, dayItems)) {
+      if (w.type === "add") {
+        const item: Omit<StoredItem, "id"> = {
+          ...w.item,
+          dayDate: change.date,
+          order: w.order,
+          locked: false,
+          source: "ai",
+          milestoneId: null,
+          updatedAt: now,
+          updatedBy: me,
+        };
+        batch.set(doc(collection(d, "trips", tripId, "items")), item);
+      } else if (w.type === "update") {
+        batch.update(doc(d, "trips", tripId, "items", w.itemId), { ...w.patch, updatedAt: now, updatedBy: me });
+      } else {
+        batch.delete(doc(d, "trips", tripId, "items", w.itemId));
+      }
+    }
+  }
+  batch.update(doc(d, "trips", tripId, "tripProposals", p.id), { status: "accepted" });
+  batch.commit().catch(fail("applying the trip suggestion"));
+}
+
+/** Replace the trip's rules (the "keep as a rule" requests). */
+export function setRules(tripId: string, rules: string[]) {
+  updateDoc(doc(db(), "trips", tripId), { "inputs.rules": rules, updatedAt: Date.now() }).catch(fail("saving trip rules"));
 }
