@@ -1,5 +1,6 @@
 "use client";
 
+import type { TripInputs } from "@/lib/model/inputs";
 import {
   collection,
   doc,
@@ -61,10 +62,11 @@ export function watchTrips(
 export type CreateResult = { ok: true; id: string } | { ok: false; error: string };
 
 /** Create a trip. Returns its id immediately, online or not. */
-export function createTrip(input: NewTripInput, me: string): CreateResult {
+/** Make a trip; `inputs` comes from a quick start, so the trip arrives already filled in. */
+export function createTrip(input: NewTripInput, me: string, inputs?: TripInputs): CreateResult {
   const built = buildNewTrip(input, me, Date.now());
   if (!built.ok) return built;
   const ref = doc(collection(db(), "trips"));
-  setDoc(ref, built.trip).catch(reportFailure("saving the trip"));
+  setDoc(ref, inputs ? { ...built.trip, inputs } : built.trip).catch(reportFailure("saving the trip"));
   return { ok: true, id: ref.id };
 }

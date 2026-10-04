@@ -2,6 +2,8 @@ import { dayCount, type TripInputs } from "@/lib/model/inputs";
 import type { DayDraft, PlanItemDraft, TripOption } from "@/lib/model/plan";
 import type { FlyerEvent } from "@/lib/model/note";
 import type { VanSpot } from "@/lib/model/van";
+import type { QuickStart } from "@/lib/model/quickstart";
+import { addDays } from "@/lib/model/inputs";
 import type { Holiday, HoursResult, PlaceInfo, Source, WeatherDay, WikiSummary } from "@/lib/model/place";
 
 /**
@@ -196,5 +198,35 @@ export function mockReroute(
         { kind: "activity" as const, title: "Pool afternoon before the wedding", start: "14:00", end: "16:00", place: "Palm Springs", notes: "" },
       ],
     })),
+  };
+}
+
+// ---------- Quick start stand-in ----------
+
+/** A van trip a month out, two weeks long, with a wedding near the end. */
+export function mockQuickStart(today: string): QuickStart {
+  const start = addDays(today, 30);
+  return {
+    title: "Desert wedding loop",
+    startDate: start,
+    endDate: addDays(start, 13),
+    flexibleDays: null,
+    regions: ["Joshua Tree, California", "Palm Springs, California"],
+    startPlace: null,
+    endPlace: null,
+    milestones: [
+      { title: "Friends' wedding", kind: "wedding", date: addDays(start, 12), endDate: null, time: "16:00", place: "Palm Springs, California", priority: "required" },
+    ],
+    modes: ["campervan"],
+    vehicle: null,
+    maxDriveHoursPerDay: null,
+    interests: ["climbing", "hot springs"],
+    lodging: [],
+    budget: null,
+    pace: "chill",
+    mustDos: null,
+    hardNos: null,
+    units: null,
+    otherNotes: null,
   };
 }
