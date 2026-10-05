@@ -1,5 +1,6 @@
 "use client";
 
+import MicButton from "@/components/voice/MicButton";
 import { useState } from "react";
 import Sheet from "@/components/ui/Sheet";
 import { Field, inputClass, Segmented } from "@/components/ui/fields";
@@ -98,6 +99,9 @@ export default function CaptureSheet({
             className={`${inputClass} py-2`}
           />
         </Field>
+        <div className="-mt-3 flex justify-end">
+          <MicButton value={text} onChange={setText} />
+        </div>
 
         {days.length > 0 && (
           <Field label="About">

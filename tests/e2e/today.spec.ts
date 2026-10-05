@@ -18,7 +18,7 @@ test("mid-trip, the app opens on Today: the stop, weather, light, now and next",
   await expect(page.getByText("Exploring Joshua Tree")).toBeVisible();
   await expect(page.getByText(/Clear · \d+° \/ \d+° · 10% rain/)).toBeVisible();
   await expect(page.getByText("Public holiday: Sample Day. Some places may close.")).toBeVisible();
-  await expect(page.getByText(/Sunset .*, in |Sunrise tomorrow/)).toBeVisible();
+  await expect(page.getByText(/^(Sunset \d{1,2}:\d{2}[ap]m, in |Sunrise tomorrow)/)).toBeVisible();
   await expect(page.getByRole("region", { name: "Now and next" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Ask about this day" })).toBeVisible();
 
