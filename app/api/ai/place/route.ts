@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
   if (process.env.AI_MOCK === "1") return Response.json({ ...mockPlaceInfo(place.name), usage: null });
 
-  const notes = await research(RESEARCH_SYSTEM, researchPrompt(place.name, describeTrip(trip, inputs, today), from, to, wiki));
+  const notes = await research(RESEARCH_SYSTEM, researchPrompt(place.name, describeTrip(trip, inputs, today), from, to, wiki), 6);
   if (!notes.ok) return Response.json({ error: notes.error }, { status: notes.status });
 
   const shaped = await runStructured({
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     system: STRUCTURE_SYSTEM,
     prompt: structurePrompt(notes.notes, notes.sources),
     schema: PlaceInfoSchema,
-    maxTokens: 4000,
+    maxTokens: 6000,
   });
   if (!shaped.ok) return Response.json({ error: shaped.error }, { status: shaped.status });
 

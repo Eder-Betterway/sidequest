@@ -153,3 +153,16 @@ describe("stayRange", () => {
     expect(stayRange(days, "2026-12-01")).toEqual({ from: "2026-12-01", to: "2026-12-01" });
   });
 });
+
+describe("food and booking in the write-up", () => {
+  it("asks for both and the stand-in answer fits the schema", async () => {
+    const { RESEARCH_SYSTEM, STRUCTURE_SYSTEM } = await import("@/lib/ai/prompts/place");
+    const { PlaceInfoSchema } = await import("@/lib/model/place");
+    const { mockPlaceInfo } = await import("@/lib/ai/mocks");
+    expect(RESEARCH_SYSTEM).toContain("Where to eat, Book ahead");
+    expect(STRUCTURE_SYSTEM).toContain("bookAhead");
+    const info = PlaceInfoSchema.parse(mockPlaceInfo("Joshua Tree").info);
+    expect(info.food[0]).toMatchObject({ kind: "coffee", price: "$" });
+    expect(info.bookAhead[0].url).toBe("https://www.recreation.gov/");
+  });
+});

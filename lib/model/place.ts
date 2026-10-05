@@ -40,6 +40,26 @@ export const PlaceInfoSchema = z.object({
       })
     )
     .describe("Events, markets, festivals, live music, closures during their dates. Empty if none found."),
+  food: z
+    .array(
+      z.object({
+        name: z.string().describe("The place's real name, as it appears on a map"),
+        kind: z.enum(["coffee", "breakfast", "lunch", "dinner", "drinks", "groceries", "treat"]),
+        why: z.string().describe("One line: what to order or why it suits them"),
+        price: z.enum(["$", "$$", "$$$", "$$$$"]).nullable(),
+      })
+    )
+    .describe("3 to 6 local places to eat or drink that suit their budget and tastes, plus a grocery stop if they're camping. Empty if the notes have none."),
+  bookAhead: z
+    .array(
+      z.object({
+        what: z.string().describe("What to reserve, e.g. 'Campsite at Jumbo Rocks' or 'Timed entry to the park'"),
+        lead: z.string().describe("How far ahead, e.g. 'Opens 6 months ahead, sells out in minutes' or '1 to 2 weeks ahead'"),
+        how: z.string().describe("Where or how to book, in a few words"),
+        url: z.string().nullable().describe("The official booking or info link from the sources, else null"),
+      })
+    )
+    .describe("Only things that really need a reservation, permit, or timed ticket for their dates. Empty if nothing does."),
 });
 export type PlaceInfo = z.infer<typeof PlaceInfoSchema>;
 
