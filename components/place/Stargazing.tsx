@@ -81,7 +81,7 @@ export default function Stargazing({
                 {cloud !== null && ` · clouds ${cloud}%`}
               </p>
               <p className="text-muted">
-                {n.milkyWay ? `Milky Way core up ${t(n.milkyWay.from)} to ${t(n.milkyWay.to)}` : "Milky Way core not up while it's dark"}
+                {n.milkyWay ? `Milky Way core up ${t(n.milkyWay.from)} to ${t(n.milkyWay.to)}` : "Milky Way core not up while it's dark (its season is roughly March to October)"}
               </p>
             </li>
           );
