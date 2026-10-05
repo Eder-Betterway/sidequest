@@ -13,6 +13,7 @@ import DriveLegCard from "@/components/van/DriveLegCard";
 import VanSheet from "@/components/van/VanSheet";
 import OfflineSheet from "@/components/plan/OfflineSheet";
 import SpeakButton from "@/components/voice/SpeakButton";
+import ListsCard from "@/components/lists/ListsCard";
 import { todayScript } from "@/lib/plan/readAloud";
 import { callAi, todayIso } from "@/lib/ai/client";
 import { watchNearby } from "@/lib/data/van";
@@ -92,6 +93,7 @@ export default function TodayView({
             Get ready for no signal
           </button>
         </section>
+        <ListsCard tripId={trip.id} modes={inputs.modes} email={email} />
         {changes}
         {offline && <OfflineSheet trip={trip} inputs={inputs} plan={plan} email={email} onClose={() => setOffline(false)} />}
       </div>
@@ -235,6 +237,8 @@ function During({
           {moveLeg ? `: about ${formatHours(moveLeg.hours)}, ${formatDistance(moveLeg.km, units)}.` : "."}
         </p>
       )}
+
+      {van && (moving || legIn) && <ListsCard tripId={trip.id} modes={inputs.modes} email={email} focus="Van ready before we roll" />}
 
       {van && day.place && <Restock tripId={trip.id} base={day.base} units={units} onOpen={() => setVanOpen(true)} />}
 

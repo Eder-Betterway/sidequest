@@ -19,6 +19,7 @@ import { effectiveVibe } from "@/lib/plan/vibe";
 import CaptureSheet, { dayChoices } from "./CaptureSheet";
 import NoteCard, { type Work } from "./NoteCard";
 import { useNotes } from "./useNotes";
+import ListsCard from "@/components/lists/ListsCard";
 import { askQuestion } from "./ask";
 import { offerUndo } from "@/components/plan/undo";
 
@@ -132,6 +133,7 @@ export default function NotesArea({ trip, email }: { trip: Trip; email: string }
 
   return (
     <div className="space-y-4">
+      <ListsCard tripId={trip.id} modes={inputs.modes} email={email} />
       <section className="rounded-2xl border border-border bg-surface p-4">
         <h2 className="font-semibold">Capture it before you forget</h2>
         <p className="mt-1 text-sm text-muted">
