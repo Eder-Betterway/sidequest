@@ -1,3 +1,4 @@
+import type { ParksInfo } from "@/lib/grounding/parks";
 import { glowFrom, type Glow } from "@/lib/grounding/sky";
 import { dayCount, type TripInputs } from "@/lib/model/inputs";
 import type { DayDraft, PlanItemDraft, TripOption } from "@/lib/model/plan";
@@ -101,6 +102,7 @@ export function mockPlaceFacts(name: string, from: string): {
   holidays: Holiday[];
   nightClouds: { date: string; cloud: number }[];
   glow: Glow;
+  parks: ParksInfo;
 } {
   return {
     wiki: { title: name, extract: `${name} is a sample place used in tests. It has a long and colorful past.`, url: "https://en.wikipedia.org/wiki/Sample" },
@@ -111,6 +113,17 @@ export function mockPlaceFacts(name: string, from: string): {
     holidays: [{ date: from, name: "Sample Day" }],
     nightClouds: [{ date: from, cloud: 5 }],
     glow: glowFrom([{ name: "Sample Town", population: 30000, km: 40 }]),
+    parks: {
+      park: {
+        name: "Sample National Park",
+        code: "samp",
+        url: "https://www.nps.gov/samp/",
+        km: 4,
+        alerts: [{ title: "Scenic road closed for repairs", category: "Park Closure", description: "The upper loop is closed weekdays.", url: "https://www.nps.gov/samp/planyourvisit/conditions.htm" }],
+      },
+      campgrounds: [{ id: "123456", name: "Sample Rocks Campground", url: "https://www.recreation.gov/camping/campgrounds/123456", km: 6 }],
+      checked: { nps: true, ridb: true },
+    },
   };
 }
 

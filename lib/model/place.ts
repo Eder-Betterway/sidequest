@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ParksInfo } from "@/lib/grounding/parks";
 import type { Glow } from "@/lib/grounding/sky";
 
 /**
@@ -89,6 +90,8 @@ export interface TripPlaceInfo {
   nightClouds?: NightCloud[];
   /** Town-light estimate for stargazing. Missing on older saves, null if it couldn't be looked up. */
   glow?: Glow | null;
+  /** US only: the national park here and its alerts, and reservable campgrounds. */
+  parks?: ParksInfo | null;
   from: string;
   to: string;
   fetchedAt: number;
