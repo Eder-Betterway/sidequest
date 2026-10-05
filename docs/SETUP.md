@@ -61,7 +61,8 @@ Make **two** projects, so test previews never touch your real trips.
 
 - **Google Places** (opening hours): in console.cloud.google.com, create a project, enable **Places API (New)**, add a billing account, create an API key, and restrict it to Places API (New). Add it to Vercel as `GOOGLE_PLACES_API_KEY`.
 - **OpenRouteService** (real drive times between stops, routed around low bridges and weight limits for big rigs): sign up at openrouteservice.org (free, 2,000 routes a day), copy the key into Vercel as `ORS_API_KEY`, then redeploy. Without it, drive times are a rough straight-line estimate, labeled as such.
-- **US extras, not used yet:** NPS (developer.nps.gov) as `NPS_API_KEY`, Recreation.gov RIDB (ridb.recreation.gov) as `RIDB_API_KEY`. For now the app links to Recreation.gov's campground search, which needs no key.
+- **National Park alerts** (US): sign up at developer.nps.gov (free, instant email), copy the key into Vercel as `NPS_API_KEY`. Each stop near a national park then shows its live closures and warnings. Without it, a link to nps.gov.
+- **Recreation.gov campgrounds** (US): sign up at ridb.recreation.gov (free), open your profile to copy the API key, add it to Vercel as `RIDB_API_KEY`. Each stop then lists reservable campgrounds nearby with a Book link. Without it, a link to Recreation.gov's search.
 
 Each feature works without its key, just with a simpler fallback (like a "check hours" link).
 

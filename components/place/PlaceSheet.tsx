@@ -7,6 +7,7 @@ import { useNow } from "@/components/shell/useNow";
 import { callAi } from "@/lib/ai/client";
 import { loadPlace, type PlaceTarget } from "./loadPlace";
 import Stargazing from "./Stargazing";
+import Parks from "./Parks";
 import { watchCachedPlace, watchTripPlaceInfo } from "@/lib/data/places";
 import { sunTimes } from "@/lib/grounding/sun";
 import type { TripInputs } from "@/lib/model/inputs";
@@ -144,6 +145,10 @@ export default function PlaceSheet({
             </ul>
             <p className="mt-1 text-xs text-muted">AI research: check the official site for current rules and availability.</p>
           </Section>
+        )}
+
+        {target.countryCode === "US" && saved && (
+          <Parks placeName={target.name} parks={saved.parks} fetchedAt={saved.fetchedAt} units={units} />
         )}
 
         {sun && (

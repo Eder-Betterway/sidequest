@@ -4,6 +4,7 @@ import { callAi, todayIso } from "@/lib/ai/client";
 import type { Usage } from "@/lib/ai/claude";
 import { saveCachedPlace, saveTripPlaceInfo } from "@/lib/data/places";
 import type { TripInputs } from "@/lib/model/inputs";
+import type { ParksInfo } from "@/lib/grounding/parks";
 import type { Glow } from "@/lib/grounding/sky";
 import { placeKey, type NightCloud, type Holiday, type PlaceInfo, type Source, type TripPlaceInfo, type WeatherDay, type WikiSummary } from "@/lib/model/place";
 import type { Trip } from "@/lib/model/trip";
@@ -22,6 +23,7 @@ type Facts = {
   holidays: Holiday[];
   nightClouds?: NightCloud[];
   glow?: Glow | null;
+  parks?: ParksInfo | null;
 };
 
 /**
@@ -78,6 +80,7 @@ export async function loadPlace(args: {
       nightClouds: facts.data.nightClouds ?? [],
       // Keep the last good estimate if the lookup failed this time.
       glow: facts.data.glow ?? previous?.glow ?? null,
+      parks: facts.data.parks ?? null,
       from,
       to,
       fetchedAt: Date.now(),
