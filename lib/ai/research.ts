@@ -42,7 +42,7 @@ export async function research(system: string, prompt: string, maxSearches = 4):
   }
   client ??= new Anthropic();
   const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: prompt }];
-  const usage: Usage = { model: "", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 };
+  const usage: Usage = { model: "", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, webSearches: 0 };
 
   try {
     for (let turn = 0; turn <= MAX_CONTINUATIONS; turn++) {
@@ -60,6 +60,7 @@ export async function research(system: string, prompt: string, maxSearches = 4):
       usage.inputTokens += response.usage.input_tokens;
       usage.outputTokens += response.usage.output_tokens;
       usage.cacheReadTokens += response.usage.cache_read_input_tokens ?? 0;
+      usage.webSearches = (usage.webSearches ?? 0) + (response.usage.server_tool_use?.web_search_requests ?? 0);
 
       if (response.stop_reason === "refusal") {
         return { ok: false, status: 422, error: "Claude couldn't research that one." };

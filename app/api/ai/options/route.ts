@@ -33,7 +33,8 @@ export async function POST(req: Request) {
   }
 
   if (process.env.AI_MOCK === "1") {
-    return Response.json({ options: mockOptions(trip, inputs), usage: null });
+    // A made-up usage so the spend estimate has something to show in tests.
+    return Response.json({ options: mockOptions(trip, inputs), usage: { model: "claude-opus-5-5", inputTokens: 20000, outputTokens: 5000, cacheReadTokens: 0 } });
   }
 
   const brief = describeTrip(trip, inputs, today);

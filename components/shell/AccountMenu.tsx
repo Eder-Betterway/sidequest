@@ -7,6 +7,9 @@ import { getFirebase } from "@/lib/firebase/client";
 import { buildExport, exportFileName } from "@/lib/data/export";
 import type { Trip } from "@/lib/model/trip";
 import { Segmented } from "@/components/ui/fields";
+import { readAiRuns } from "@/lib/data/spend";
+import { who } from "@/lib/model/history";
+import { formatUsd, monthStart, summarizeSpend, type SpendSummary } from "@/lib/model/spend";
 import { ACCENTS, getAppearance, isDark, setAppearance, type Appearance, type TextSize, type ThemeChoice } from "@/lib/appearance";
 
 const THEMES: Record<string, ThemeChoice> = { "match phone": "auto", light: "light", dark: "dark" };
@@ -16,6 +19,7 @@ const SIZES: Record<string, TextSize> = { normal: "normal", large: "large", larg
 export default function AccountMenu({ email, trips }: { email: string; trips: Trip[] }) {
   const [open, setOpen] = useState(false);
   const [look, setLook] = useState<Appearance | null>(null);
+  const [spend, setSpend] = useState<SpendSummary | null>(null);
   const change = (patch: Partial<Appearance>) => setLook(setAppearance(patch));
 
   function download() {
@@ -36,6 +40,9 @@ export default function AccountMenu({ email, trips }: { email: string; trips: Tr
         onClick={() => {
           setLook(getAppearance());
           setOpen(true);
+          const since = monthStart(Date.now());
+          setSpend(null);
+          void readAiRuns(trips.map((t) => t.id), since).then((runs) => setSpend(summarizeSpend(runs, since)));
         }}
         aria-label="Account"
         className="flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-sm font-bold uppercase text-accent"
@@ -98,6 +105,45 @@ export default function AccountMenu({ email, trips }: { email: string; trips: Tr
               </p>
             </section>
           )}
+
+          <section aria-label="AI spent this month" className="mt-6">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">AI spent this month</h3>
+            {!spend ? (
+              <p className="mt-1 text-sm text-muted">Adding it up...</p>
+            ) : (
+              <>
+                <p className="mt-1 text-2xl font-bold">{spend.runs ? `About ${formatUsd(spend.total)}` : "$0.00"}</p>
+                <p className="text-sm text-muted">
+                  {spend.runs
+                    ? `${spend.runs} AI ${spend.runs === 1 ? "request" : "requests"} across ${trips.length === 1 ? "your trip" : `your ${trips.length} trips`}`
+                    : "Nothing yet this month."}
+                </p>
+                {spend.runs > 0 && (
+                  <ul className="mt-2 space-y-1 text-sm">
+                    {spend.byWhat.map((w) => (
+                      <li key={w.label} className="flex justify-between gap-3">
+                        <span>{w.label}</span>
+                        <span className="text-muted">{formatUsd(w.cost)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {spend.byWho.length > 1 && (
+                  <ul aria-label="By who" className="mt-2 space-y-1 border-t border-border pt-2 text-sm">
+                    {spend.byWho.map((w) => (
+                      <li key={w.email} className="flex justify-between gap-3">
+                        <span>{who(w.email, email)}</span>
+                        <span className="text-muted">{formatUsd(w.cost)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="mt-2 text-xs text-muted">
+                  An estimate from the app&apos;s own log, on the shared key. The Anthropic console has the real bill; @claude code changes on GitHub aren&apos;t counted here.
+                </p>
+              </>
+            )}
+          </section>
 
           <button
             type="button"
