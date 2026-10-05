@@ -8,6 +8,8 @@ import type { TripInputs } from "@/lib/model/inputs";
 import { authorLabel, buildNote, MAX_NOTE_TEXT, unanswered, type Note } from "@/lib/model/note";
 import type { Trip } from "@/lib/model/trip";
 import type { PlanState } from "./usePlan";
+import MicButton from "@/components/voice/MicButton";
+import SpeakButton from "@/components/voice/SpeakButton";
 
 const SHOWN = 3;
 
@@ -90,6 +92,7 @@ export default function QuestionsPanel({
           placeholder={dayDate ? "Will the trail be too hot by noon?" : "Does this line up well with the weather?"}
           className="min-h-12 min-w-0 flex-1 rounded-xl border border-border bg-bg px-3 py-2 text-base outline-none focus:border-accent"
         />
+        <MicButton value={text} onChange={setText} label="Ask out loud" />
         <button type="submit" disabled={!text.trim()} className="min-h-12 shrink-0 rounded-xl bg-accent px-4 font-semibold text-on-accent disabled:opacity-50">
           Ask
         </button>
@@ -120,6 +123,7 @@ export default function QuestionsPanel({
                     </ul>
                   )}
                   <p className="mt-2 text-[11px] text-muted">AI answer. Double-check anything that matters.</p>
+                  <SpeakButton text={n.answer.text} />
                 </div>
               ) : busy.has(n.id) ? (
                 <p className="mt-1 text-sm text-muted">Finding an answer...</p>

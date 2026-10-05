@@ -4,6 +4,7 @@ import { useState } from "react";
 import { authorLabel, eventDay, type FlyerEvent, type Note } from "@/lib/model/note";
 import { formatTime, toMinutes, type PlanItemDraft } from "@/lib/model/plan";
 import type { DayChoice } from "./CaptureSheet";
+import SpeakButton from "@/components/voice/SpeakButton";
 
 const KIND_LABEL: Record<Note["kind"], string> = { note: "Note", tip: "Tip", question: "Question", flyer: "Flyer" };
 
@@ -76,6 +77,7 @@ export default function NoteCard({
               </ul>
             )}
             <p className="mt-2 text-[11px] text-muted">AI answer. Double-check anything that matters.</p>
+            <SpeakButton text={note.answer.text} />
           </div>
         ) : (
           <Status

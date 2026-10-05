@@ -58,7 +58,7 @@ test("ask about the whole trip or a single day without leaving the plan", async 
 
   const trip = page.getByRole("region", { name: "Ask about the trip" });
   await trip.getByLabel("Question about the trip").fill("Does this line up well with the weather?");
-  await trip.getByRole("button", { name: "Ask" }).click();
+  await trip.getByRole("button", { name: "Ask", exact: true }).click();
   await expect(trip.getByRole("listitem", { name: /Does this line up/ })).toContainText("Short answer: yes.");
   await expect(trip.getByRole("link", { name: "Example visitor guide" })).toBeVisible();
 
@@ -68,7 +68,7 @@ test("ask about the whole trip or a single day without leaving the plan", async 
   await expect(day.getByRole("listitem")).toHaveCount(0);
   await context.setOffline(true);
   await day.getByLabel("Question about this day").fill("Will the trail be too hot by noon?");
-  await day.getByRole("button", { name: "Ask" }).click();
+  await day.getByRole("button", { name: "Ask", exact: true }).click();
   const q = day.getByRole("listitem", { name: /too hot by noon/ });
   await expect(q).toContainText("Waiting for signal.");
   await context.setOffline(false);

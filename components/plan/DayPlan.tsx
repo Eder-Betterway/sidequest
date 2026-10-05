@@ -18,6 +18,8 @@ import VanSheet from "@/components/van/VanSheet";
 import { legsFor } from "@/lib/model/van";
 import QuestionsPanel from "./QuestionsPanel";
 import { offerUndo } from "./undo";
+import SpeakButton from "@/components/voice/SpeakButton";
+import { dayScript } from "@/lib/plan/readAloud";
 import type { ChangeDraft } from "@/lib/model/draft";
 import type { Note } from "@/lib/model/note";
 
@@ -116,6 +118,7 @@ export default function DayPlan({
       <section className="rounded-2xl border border-border bg-surface p-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label.long}</p>
         <h2 className="mt-0.5 text-lg font-bold">{day.title}</h2>
+        <SpeakButton text={dayScript(day.title, day.base, items, units)} label="Read this day aloud" />
         <button
           type="button"
           onClick={() => {

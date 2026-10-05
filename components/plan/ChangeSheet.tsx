@@ -10,6 +10,7 @@ import { buildDraft, combineRequests, draftsFor, MAX_DRAFT_TEXT, ruleText, type 
 import type { TripInputs } from "@/lib/model/inputs";
 import type { Trip } from "@/lib/model/trip";
 import { rerouteTrip } from "./reroute";
+import MicButton from "@/components/voice/MicButton";
 import type { PlanState } from "./usePlan";
 
 export function longDate(iso: string) {
@@ -141,6 +142,9 @@ export default function ChangeSheet({
             className={`${inputClass} py-2`}
           />
         </Field>
+        <div className="-mt-3 flex justify-end">
+          <MicButton value={text} onChange={setText} />
+        </div>
         <Toggle label="Keep as a rule for every re-plan" checked={rule} onChange={setRule} />
         {error && (
           <p role="alert" className="text-sm text-warn">

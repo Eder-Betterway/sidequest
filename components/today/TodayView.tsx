@@ -12,6 +12,8 @@ import CaptureSheet, { dayChoices } from "@/components/notes/CaptureSheet";
 import DriveLegCard from "@/components/van/DriveLegCard";
 import VanSheet from "@/components/van/VanSheet";
 import OfflineSheet from "@/components/plan/OfflineSheet";
+import SpeakButton from "@/components/voice/SpeakButton";
+import { todayScript } from "@/lib/plan/readAloud";
 import { callAi, todayIso } from "@/lib/ai/client";
 import { watchNearby } from "@/lib/data/van";
 import { sunTimes } from "@/lib/grounding/sun";
@@ -163,6 +165,19 @@ function During({
   const tomorrow = plan.days[index + 1];
   const moving = tomorrow && tomorrow.base !== day.base ? tomorrow : null;
   const moveLeg = moving && day.place && moving.place ? estimateLeg(day.place, moving.place) : null;
+  const facts = readTodayFacts(trip.id, today, day.base);
+  const script = todayScript({
+    dayNumber: index + 1,
+    dayCount: plan.days.length,
+    title: day.title,
+    base: day.base,
+    items,
+    nowMin,
+    sunset: sun?.sunset ?? null,
+    weather: facts?.weather ? `${facts.weather.label}, high ${tempIn(facts.weather.high, units)}, low ${tempIn(facts.weather.low, units)}` : null,
+    units,
+    move: moving && moveLeg ? { to: moving.base, hours: formatHours(moveLeg.hours) } : null,
+  });
 
   return (
     <div className="space-y-4">
@@ -172,6 +187,7 @@ function During({
         </p>
         <h2 className="mt-0.5 text-xl font-bold">{day.title}</h2>
         <p className="text-sm text-muted">{day.base}</p>
+        <SpeakButton text={script} label="Read today aloud" />
         <TodayWeather tripId={trip.id} day={day} today={today} units={units} />
         {sun && (
           <p className="mt-1 text-sm">
@@ -268,6 +284,17 @@ function ItemLine({ label, item, extra }: { label: string; item: StoredItem; ext
 
 type TodayFacts = { weather: WeatherDay | null; holiday: Holiday | null };
 
+const factsKey = (tripId: string, today: string, base: string) => `sidequest_today_${tripId}_${today}_${placeKey(base)}`;
+
+function readTodayFacts(tripId: string, today: string, base: string): TodayFacts | null {
+  try {
+    const raw = localStorage.getItem(factsKey(tripId, today, base));
+    return raw ? (JSON.parse(raw) as TodayFacts) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Today's forecast and any public holiday, fetched once a day per stop and kept on this phone. */
 function TodayWeather({
   tripId,
@@ -281,15 +308,8 @@ function TodayWeather({
   units: "imperial" | "metric";
 }) {
   const online = useOnline();
-  const key = `sidequest_today_${tripId}_${today}_${placeKey(day.base)}`;
-  const [facts, setFacts] = useState<TodayFacts | null>(() => {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? (JSON.parse(raw) as TodayFacts) : null;
-    } catch {
-      return null;
-    }
-  });
+  const key = factsKey(tripId, today, day.base);
+  const [facts, setFacts] = useState<TodayFacts | null>(() => readTodayFacts(tripId, today, day.base));
   const place = day.place;
 
   useEffect(() => {
