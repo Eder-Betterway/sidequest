@@ -11,6 +11,7 @@ import type { TripInputs } from "@/lib/model/inputs";
 import type { Trip } from "@/lib/model/trip";
 import { rerouteTrip } from "./reroute";
 import MicButton from "@/components/voice/MicButton";
+import JobProgress, { startJob, type JobState } from "@/components/ui/JobProgress";
 import type { PlanState } from "./usePlan";
 
 export function longDate(iso: string) {
@@ -50,6 +51,8 @@ export default function ChangeSheet({
   const [text, setText] = useState("");
   const [rule, setRule] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [job, setJob] = useState<JobState | null>(null);
+  const [expectedDays, setExpectedDays] = useState(1);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,12 +90,26 @@ export default function ChangeSheet({
 
     const { instruction, focusDate: focus } = combineRequests(requests, focusDate);
     setBusy(true);
-    const res = await rerouteTrip({ trip, inputs: next, plan, instruction, focusDate: focus, draftIds: scoped.map((d) => d.id), email });
+    const { startedAt } = startJob();
+    // A rough idea of how many days will change, for the progress bar.
+    setExpectedDays(Math.max(new Set(requests.map((r) => r.dayDate ?? "trip")).size, requests.some((r) => !r.dayDate) ? 3 : 1));
+    setJob({ stage: "reading", days: 0, startedAt });
+    const res = await rerouteTrip({
+      trip,
+      inputs: next,
+      plan,
+      instruction,
+      focusDate: focus,
+      draftIds: scoped.map((d) => d.id),
+      email,
+      onProgress: (e) => setJob({ stage: e.stage, days: e.days ?? 0, startedAt }),
+    });
     setBusy(false);
+    setJob(null);
     if (!res.ok) {
       // Nothing typed gets lost: it waits as a draft.
       if (typed) saveDraft();
-      return setError(typed ? `${res.error} Saved as a draft.` : res.error);
+      return setError(`${res.error} ${typed ? "What you typed is saved as a draft." : "Your drafts are still saved."}`);
     }
     if (res.changedDays === 0) return setResult(`No changes needed. ${res.summary}`);
     onReview();
@@ -138,6 +155,7 @@ export default function ChangeSheet({
           </p>
         )}
         {result && <p className="rounded-xl bg-surface-2 p-3 text-sm">{result}</p>}
+        {job && <JobProgress job={job} expectedDays={expectedDays} />}
         <div className="flex gap-3">
           <button
             type="button"
@@ -156,7 +174,7 @@ export default function ChangeSheet({
           </button>
         </div>
         <p className="text-center text-xs text-muted">
-          {busy ? "This takes up to a minute." : "Drafts save with no signal. Nothing changes until you approve it."}
+          {busy ? "Nothing changes until you approve it." : "Drafts save with no signal. Nothing changes until you approve it."}
         </p>
       </form>
     </Sheet>

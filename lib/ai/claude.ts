@@ -45,49 +45,70 @@ export function aiConfigured(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY) || process.env.AI_MOCK === "1";
 }
 
-export async function runStructured<S extends z.ZodType>(call: StructuredCall<S>): Promise<AiResult<z.infer<S>>> {
+export interface StreamOptions {
+  /** Called as the answer streams in, with everything written so far. */
+  onText?: (soFar: string) => void;
+  /** Give up after this long, with a clear message (keep it under the route's maxDuration). */
+  deadlineMs?: number;
+}
+
+export async function runStructured<S extends z.ZodType>(call: StructuredCall<S>, opts: StreamOptions = {}): Promise<AiResult<z.infer<S>>> {
   if (!process.env.ANTHROPIC_API_KEY) {
     return { ok: false, status: 503, error: "The AI isn't set up on the server yet (ANTHROPIC_API_KEY)." };
   }
   client ??= new Anthropic();
   const fallback = FALLBACK_ROLES.has(call.role);
+  // Send the schema without the SDK's auto-parse, so a cut-off answer is
+  // caught by its stop reason below instead of failing as a parse error.
+  const { parse, ...format } = betaZodOutputFormat(call.schema);
 
   try {
-    const response = await client.beta.messages.parse({
-      model: MODELS[call.role],
-      max_tokens: call.maxTokens ?? 16000,
-      system: [{ type: "text", text: call.system, cache_control: { type: "ephemeral" } }],
-      messages: [
-        {
-          role: "user",
-          content: [
-            ...(call.images ?? []).map((img) => ({
-              type: "image" as const,
-              source: { type: "base64" as const, media_type: img.mediaType, data: img.data },
-            })),
-            { type: "text" as const, text: call.prompt },
-          ],
+    // Streamed, so long answers don't hit request timeouts and progress can be shown.
+    const stream = client.beta.messages.stream(
+      {
+        model: MODELS[call.role],
+        max_tokens: call.maxTokens ?? 16000,
+        system: [{ type: "text", text: call.system, cache_control: { type: "ephemeral" } }],
+        messages: [
+          {
+            role: "user",
+            content: [
+              ...(call.images ?? []).map((img) => ({
+                type: "image" as const,
+                source: { type: "base64" as const, media_type: img.mediaType, data: img.data },
+              })),
+              { type: "text" as const, text: call.prompt },
+            ],
+          },
+        ],
+        output_config: {
+          ...(call.role === "quick" ? {} : { effort: call.effort }),
+          format,
         },
-      ],
-      output_config: {
-        ...(call.role === "quick" ? {} : { effort: call.effort }),
-        format: betaZodOutputFormat(call.schema),
+        ...(fallback ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
       },
-      ...(fallback ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
-    });
+      opts.deadlineMs ? { signal: AbortSignal.timeout(opts.deadlineMs) } : undefined
+    );
+    if (opts.onText) stream.on("text", (_delta, soFar) => opts.onText!(soFar));
+    const response = await stream.finalMessage();
 
     if (response.stop_reason === "refusal") {
       return { ok: false, status: 422, error: "Claude couldn't help with that one. Try rewording it." };
     }
     if (response.stop_reason === "max_tokens") {
-      return { ok: false, status: 502, error: "The answer ran too long. Try a shorter trip or fewer days at once." };
+      return { ok: false, status: 502, error: "Claude's answer ran too long and got cut off. Try fewer changes at once, or change one day at a time." };
     }
-    if (!response.parsed_output) {
+    const text = response.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+    let data: z.infer<S>;
+    try {
+      data = parse(text) as z.infer<S>;
+    } catch (err) {
+      console.error("Claude answer didn't match the schema", err);
       return { ok: false, status: 502, error: "Claude's answer came back in the wrong shape. Try again." };
     }
     return {
       ok: true,
-      data: response.parsed_output as z.infer<S>,
+      data,
       usage: {
         model: response.model,
         inputTokens: response.usage.input_tokens,
@@ -96,19 +117,33 @@ export async function runStructured<S extends z.ZodType>(call: StructuredCall<S>
       },
     };
   } catch (err) {
-    if (err instanceof Anthropic.RateLimitError) {
-      return { ok: false, status: 429, error: "Too many requests right now. Give it a minute." };
-    }
-    if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) {
-      return { ok: false, status: 503, error: "The server's Claude key isn't working. Check ANTHROPIC_API_KEY." };
-    }
-    if (err instanceof Anthropic.APIError) {
-      console.error("Claude API error", err.status, err.message);
-      return { ok: false, status: 502, error: "Claude had a problem. Try again in a moment." };
-    }
-    console.error("Claude call failed", err);
-    return { ok: false, status: 502, error: "Couldn't reach Claude. Try again in a moment." };
+    return { ok: false, ...friendlyError(err, opts.deadlineMs) };
   }
+}
+
+/** What went wrong, in words for the phone. Logged in full on the server. */
+export function friendlyError(err: unknown, deadlineMs?: number): { status: number; error: string } {
+  console.error("Claude call failed", err);
+  const minutes = deadlineMs ? Math.round(deadlineMs / 60_000) : null;
+  if (err instanceof Anthropic.APIUserAbortError || (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError"))) {
+    return {
+      status: 504,
+      error: `Claude was still working after ${minutes ?? "several"} minutes, so it stopped. Try fewer changes at once, or one day at a time.`,
+    };
+  }
+  if (err instanceof Anthropic.APIConnectionTimeoutError) return { status: 504, error: "Claude took too long to answer. Try again." };
+  if (err instanceof Anthropic.APIConnectionError) return { status: 502, error: "The server couldn't reach Claude. Try again in a moment." };
+  if (err instanceof Anthropic.RateLimitError) return { status: 429, error: "Too many requests right now. Give it a minute." };
+  if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) {
+    return { status: 503, error: "The server's Claude key isn't working. Check ANTHROPIC_API_KEY." };
+  }
+  if (err instanceof Anthropic.APIError) {
+    if (err.status === 529) return { status: 503, error: "Claude is very busy right now. Try again in a minute." };
+    if (err.status === 400) return { status: 502, error: "Claude didn't accept the request. Try again; if it keeps happening, it's a bug to report." };
+    if (typeof err.status === "number" && err.status >= 500) return { status: 502, error: "Claude had a hiccup on its end. Try again in a moment." };
+    return { status: 502, error: "Claude had a problem. Try again in a moment." };
+  }
+  return { status: 502, error: "Something went wrong talking to Claude. Try again in a moment." };
 }
 
 /** Sum usage across several calls (e.g. day chunks). */

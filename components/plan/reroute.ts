@@ -1,6 +1,7 @@
 "use client";
 
-import { callAi, todayIso } from "@/lib/ai/client";
+import { callAiStream, todayIso } from "@/lib/ai/client";
+import type { JobEvent } from "@/lib/ai/progress";
 import type { Usage } from "@/lib/ai/claude";
 import { logAiRun, saveTripProposal } from "@/lib/data/plan";
 import type { TripInputs } from "@/lib/model/inputs";
@@ -23,11 +24,13 @@ export async function rerouteTrip(args: {
   /** Draft changes included in this request, cleared once the result is applied. */
   draftIds?: string[];
   email: string;
+  /** Hears each stage while Claude works. */
+  onProgress?: (e: Extract<JobEvent, { type: "progress" }>) => void;
 }): Promise<{ ok: true; changedDays: number; summary: string } | { ok: false; error: string }> {
   const { trip, inputs, plan, instruction, focusDate, email } = args;
   if (!trip.startDate || !trip.endDate) return { ok: false, error: "The trip needs dates first." };
 
-  const res = await callAi<{ summary: string; days: ChangedDay[]; usage: Usage | null }>("/api/ai/reroute", {
+  const res = await callAiStream<{ summary: string; days: ChangedDay[]; usage: Usage | null }>("/api/ai/reroute", {
     trip: { title: trip.title, startDate: trip.startDate, endDate: trip.endDate },
     inputs,
     days: plan.days.slice(0, 60).map((d) => ({
@@ -43,7 +46,7 @@ export async function rerouteTrip(args: {
     instruction,
     focusDate,
     today: todayIso(),
-  });
+  }, args.onProgress ?? (() => {}));
   if (!res.ok) return res;
   logAiRun(trip.id, "reroute", res.data.usage, email);
 
