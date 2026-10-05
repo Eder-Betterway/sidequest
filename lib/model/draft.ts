@@ -14,6 +14,9 @@ export interface ChangeDraftDoc {
   rule: boolean;
   createdBy: string;
   createdAt: number;
+  /** Set when someone edits it. */
+  updatedBy?: string;
+  updatedAt?: number;
 }
 
 export interface ChangeDraft extends ChangeDraftDoc {

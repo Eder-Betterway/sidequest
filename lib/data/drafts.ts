@@ -1,6 +1,6 @@
 "use client";
 
-import { collection, deleteDoc, doc, setDoc } from "firebase/firestore";
+import { collection, deleteDoc, doc, setDoc, updateDoc } from "firebase/firestore";
 import { getFirebase } from "@/lib/firebase/client";
 import type { ChangeDraftDoc } from "@/lib/model/draft";
 import { watchCollection } from "./watch";
@@ -25,4 +25,11 @@ export function addDraft(tripId: string, draft: Omit<ChangeDraftDoc, "createdAt"
 
 export function deleteDraft(tripId: string, id: string) {
   deleteDoc(doc(db(), "trips", tripId, "drafts", id)).catch(fail("deleting the draft"));
+}
+
+/** Fix a draft's wording, move it to another day, or change whether it becomes a rule. */
+export function updateDraft(tripId: string, id: string, patch: Pick<ChangeDraftDoc, "text" | "dayDate" | "rule">, me: string) {
+  updateDoc(doc(db(), "trips", tripId, "drafts", id), { ...patch, updatedBy: me.trim().toLowerCase(), updatedAt: Date.now() }).catch(
+    fail("updating the draft")
+  );
 }

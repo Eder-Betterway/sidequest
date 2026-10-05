@@ -79,3 +79,50 @@ test("ask about the whole trip or a single day without leaving the plan", async 
   await expect(page.getByRole("article", { name: /Question: Will the trail/ })).toBeVisible();
   await expect(page.getByRole("article", { name: /Question: Does this line up/ })).toBeVisible();
 });
+
+test("edit a draft in place: fix the wording, move it to another day, or cancel", async ({ page }) => {
+  await signIn(page, TESTER);
+  await plannedTrip(page, "Draft edits");
+
+  await page.getByRole("button", { name: "Change Tuesday, Nov 3" }).click();
+  let sheet = page.getByRole("dialog", { name: "Change Tuesday, Nov 3" });
+  await sheet.getByLabel("What should change?").fill("Only one night in the first town");
+  await sheet.getByRole("button", { name: "Save draft" }).click();
+  await sheet.getByRole("button", { name: "Close" }).click();
+
+  await page.getByRole("button", { name: "Review 1 draft change" }).click();
+  sheet = page.getByRole("dialog", { name: "Change the trip" });
+  const drafts = sheet.getByRole("region", { name: "Draft changes" });
+
+  // Cancel leaves it as it was.
+  await drafts.getByRole("button", { name: "Edit draft: Only one night in the first town" }).click();
+  let editing = drafts.getByRole("listitem", { name: "Editing draft" });
+  await editing.getByLabel("Draft text").fill("Something else entirely");
+  await editing.getByRole("button", { name: "Cancel" }).click();
+  await expect(drafts).toContainText("Only one night in the first town");
+
+  // Fix the wording, move it to Wednesday, and keep it as a rule.
+  await drafts.getByRole("button", { name: "Edit draft: Only one night in the first town" }).click();
+  editing = drafts.getByRole("listitem", { name: "Editing draft" });
+  await expect(editing.getByLabel("Draft text")).toHaveValue("Only one night in the first town");
+  await editing.getByLabel("Draft text").fill("Two nights in the first town, then move on");
+  await editing.getByLabel("Which day").selectOption({ label: "Wed, Nov 4" });
+  await editing.getByLabel("Keep as a rule for every re-plan").check();
+  await editing.getByRole("button", { name: "Save changes" }).click();
+  await expect(editing).toBeHidden();
+  await expect(drafts).toContainText("Wed, Nov 4");
+  await expect(drafts).toContainText("Two nights in the first town, then move on");
+  await expect(drafts).toContainText("Will be kept as a rule");
+
+  // An empty draft can't be saved.
+  await drafts.getByRole("button", { name: /^Edit draft: Two nights/ }).click();
+  editing = drafts.getByRole("listitem", { name: "Editing draft" });
+  await editing.getByLabel("Draft text").fill("   ");
+  await expect(editing.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  await editing.getByRole("button", { name: "Cancel" }).click();
+
+  // The itinerary shows the draft on its new day.
+  await sheet.getByRole("button", { name: "Close" }).click();
+  await expect(page.getByRole("button", { name: /Day 3, Wednesday, Nov 4/ })).toContainText("1 draft");
+  await expect(page.getByRole("button", { name: /Day 2, Tuesday, Nov 3/ })).not.toContainText("draft");
+});
