@@ -178,7 +178,13 @@ describe("POST /api/ai/reroute", () => {
   it("returns only changed days, with new bases looked up on the map", async () => {
     const res = await reroute(post(body));
     expect(res.status).toBe(200);
-    const json = await res.json();
+    expect(res.headers.get("content-type")).toBe("application/x-ndjson");
+    // Progress first, one event per line, then the result.
+    const events = (await res.text()).trim().split("\n").map((l) => JSON.parse(l));
+    expect(events.filter((e) => e.type === "progress").map((e) => e.stage)).toEqual(["reading", "thinking", "writing", "places"]);
+    const last = events[events.length - 1];
+    expect(last.type).toBe("result");
+    const json = last.data;
     expect(json.days).toHaveLength(1);
     expect(json.days[0]).toMatchObject({ date: "2026-11-04", base: "Palm Springs", place: { name: "Palm Springs" } });
   });

@@ -126,3 +126,33 @@ test("edit a draft in place: fix the wording, move it to another day, or cancel"
   await expect(page.getByRole("button", { name: /Day 3, Wednesday, Nov 4/ })).toContainText("1 draft");
   await expect(page.getByRole("button", { name: /Day 2, Tuesday, Nov 3/ })).not.toContainText("draft");
 });
+
+test("suggesting shows live progress, and a failure says why and keeps the drafts", async ({ page }) => {
+  await signIn(page, TESTER);
+  await plannedTrip(page, "Progress run");
+
+  await page.getByRole("button", { name: "Change Tuesday, Nov 3" }).click();
+  let sheet = page.getByRole("dialog", { name: "Change Tuesday, Nov 3" });
+  await sheet.getByLabel("What should change?").fill("Slow morning [mock:too-long]");
+  await sheet.getByRole("button", { name: "Save draft" }).click();
+  await sheet.getByRole("button", { name: "Close" }).click();
+
+  await page.getByRole("button", { name: "Review 1 draft change" }).click();
+  sheet = page.getByRole("dialog", { name: "Change the trip" });
+  await sheet.getByRole("button", { name: "Suggest changes" }).click();
+  // The stages show while it works, with a bar and a clock.
+  await expect(sheet.getByRole("status", { name: "Progress" })).toBeVisible();
+  await expect(sheet.getByRole("progressbar", { name: "Working" })).toBeVisible();
+  // The stand-in says the answer ran too long: the reason is shown and the draft stays.
+  await expect(sheet.getByRole("alert")).toContainText("ran too long and got cut off");
+  await expect(sheet.getByRole("alert")).toContainText("Your drafts are still saved.");
+  await expect(sheet.getByRole("status", { name: "Progress" })).toBeHidden();
+  await expect(sheet.getByRole("region", { name: "Draft changes" })).toContainText("Slow morning");
+
+  // Fix the draft and try again: it goes through.
+  await sheet.getByRole("button", { name: /^Edit draft: Slow morning/ }).click();
+  await sheet.getByLabel("Draft text").fill("Slow morning, then the park");
+  await sheet.getByRole("button", { name: "Save changes" }).click();
+  await sheet.getByRole("button", { name: "Suggest changes" }).click();
+  await expect(page.getByRole("dialog", { name: "Suggested trip changes" })).toBeVisible();
+});

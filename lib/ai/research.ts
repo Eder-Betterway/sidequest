@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { Source } from "@/lib/model/place";
 import { MODELS } from "./models";
-import type { Usage } from "./claude";
+import { friendlyError, type Usage } from "./claude";
 
 /**
  * A Claude call with web search that returns cited notes, not JSON (citations
@@ -76,12 +76,6 @@ export async function research(system: string, prompt: string, maxSearches = 4):
     }
     return { ok: false, status: 502, error: "The research took too long. Try again." };
   } catch (err) {
-    if (err instanceof Anthropic.RateLimitError) return { ok: false, status: 429, error: "Too many requests right now. Give it a minute." };
-    if (err instanceof Anthropic.APIError) {
-      console.error("Claude research error", err.status, err.message);
-      return { ok: false, status: 502, error: "Claude had a problem. Try again in a moment." };
-    }
-    console.error("Claude research failed", err);
-    return { ok: false, status: 502, error: "Couldn't reach Claude. Try again in a moment." };
+    return { ok: false, ...friendlyError(err) };
   }
 }
