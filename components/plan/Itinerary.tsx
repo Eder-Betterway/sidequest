@@ -15,6 +15,7 @@ import QuestionsPanel from "./QuestionsPanel";
 import ChangesCard from "./ChangesCard";
 import OfflineSheet from "./OfflineSheet";
 import type { HistoryEntry } from "@/lib/model/history";
+import { buildIcs, icsFileName } from "@/lib/plan/ics";
 
 
 function dayLabel(iso: string) {
@@ -69,6 +70,16 @@ export default function Itinerary({
     return groups;
   }, [plan.days, plan.items]);
 
+  function addToCalendar() {
+    const blob = new Blob([buildIcs(trip, plan.days, plan.items, Date.now())], { type: "text/calendar" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = icsFileName(trip.title);
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   const pendingDays = new Set(plan.proposals.map((p) => p.dayDate));
   const draftCount = (date: string) => drafts.filter((d) => d.dayDate === date).length;
 
@@ -89,6 +100,10 @@ export default function Itinerary({
         <button type="button" onClick={() => setOffline(true)} className="mt-2 min-h-11 w-full rounded-xl border border-border text-sm font-semibold">
           Get ready for no signal
         </button>
+        <button type="button" onClick={addToCalendar} className="mt-2 min-h-11 w-full rounded-xl border border-border text-sm font-semibold">
+          Add to calendar
+        </button>
+        <p className="mt-1 text-center text-xs text-muted">Each day, plus anything with a time. Open the file to add it; re-add after big changes.</p>
         {inputs.rules.length > 0 && (
           <div className="mt-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted">Rules every re-plan follows</p>

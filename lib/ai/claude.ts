@@ -20,6 +20,8 @@ export interface Usage {
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
+  /** Web searches run (billed per search on top of tokens). */
+  webSearches?: number;
 }
 
 export type AiResult<T> = { ok: true; data: T; usage: Usage } | { ok: false; status: number; error: string };
@@ -117,7 +119,8 @@ export function addUsage(list: Usage[]): Usage {
       inputTokens: acc.inputTokens + u.inputTokens,
       outputTokens: acc.outputTokens + u.outputTokens,
       cacheReadTokens: acc.cacheReadTokens + u.cacheReadTokens,
+      webSearches: (acc.webSearches ?? 0) + (u.webSearches ?? 0),
     }),
-    { model: "", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 }
+    { model: "", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, webSearches: 0 }
   );
 }
