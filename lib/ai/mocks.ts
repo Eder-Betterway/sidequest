@@ -126,6 +126,11 @@ export function mockPlaceInfo(name: string): { info: PlaceInfo; sources: Source[
       tips: ["Parking fills by 9am on weekends.", "Bring layers; evenings get cold."],
       bestTimes: ["Overlook at sunset, arrive 45 minutes early"],
       happening: [{ title: "Saturday farmers market", when: "Saturdays, 8am to noon", url: "https://example.com/market" }],
+      food: [
+        { name: "Sample Coffee Co", kind: "coffee", why: "Strong espresso and breakfast burritos", price: "$" },
+        { name: "The Sample Grill", kind: "dinner", why: "Patio dinner with a sunset view", price: "$$" },
+      ],
+      bookAhead: [{ what: "Campsite at Sample Rocks", lead: "Opens 6 months ahead, weekends sell out", how: "Recreation.gov", url: "https://www.recreation.gov/" }],
     },
     sources: [{ title: "Example events listing", url: "https://example.com/market" }],
   };

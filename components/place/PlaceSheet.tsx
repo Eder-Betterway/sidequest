@@ -125,6 +125,27 @@ export default function PlaceSheet({
           </Section>
         )}
 
+        {info && (info.bookAhead ?? []).length > 0 && (
+          <Section title="Book ahead">
+            <ul className="space-y-2 text-sm">
+              {info.bookAhead.map((b, i) => (
+                <li key={i} className="rounded-xl border border-border p-3">
+                  <span className="font-medium">{b.what}</span>
+                  <span className="block text-muted">{b.lead}</span>
+                  {b.url ? (
+                    <a href={b.url} target="_blank" rel="noreferrer" className="mt-1 inline-flex min-h-11 items-center font-medium text-accent">
+                      Book on {b.how} ›
+                    </a>
+                  ) : (
+                    <span className="block text-xs text-muted">Book via {b.how}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1 text-xs text-muted">AI research: check the official site for current rules and availability.</p>
+          </Section>
+        )}
+
         {sun && (
           <Section title="Light">
             <p className="text-sm">
@@ -222,6 +243,36 @@ export default function PlaceSheet({
                 </ul>
               </>
             )}
+          </Section>
+        )}
+
+        {info && (info.food ?? []).length > 0 && (
+          <Section title="Eat and drink">
+            <ul className="space-y-2 text-sm">
+              {info.food.map((f, i) => (
+                <li key={i} className="flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="font-medium">{f.name}</span>
+                    <span className="text-muted">
+                      {" "}
+                      · {f.kind}
+                      {f.price ? ` · ${f.price}` : ""}
+                    </span>
+                    <span className="block text-muted">{f.why}</span>
+                  </span>
+                  <a
+                    href={mapsSearchUrl(`${f.name} ${target.name}`)}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`${f.name} on Google Maps`}
+                    className="flex min-h-11 shrink-0 items-center text-xs font-medium text-accent"
+                  >
+                    Map ›
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1 text-xs text-muted">Check hours before you go; places change.</p>
           </Section>
         )}
 
