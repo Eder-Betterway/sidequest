@@ -16,7 +16,7 @@ const THEMES: Record<string, ThemeChoice> = { "match phone": "auto", light: "lig
 const SIZES: Record<string, TextSize> = { normal: "normal", large: "large", larger: "larger" };
 
 /** The round initial in the header: who's signed in, how the app looks on this phone, backup, sign out. */
-export default function AccountMenu({ email, trips }: { email: string; trips: Trip[] }) {
+export default function AccountMenu({ email, trips, onWelcome }: { email: string; trips: Trip[]; onWelcome: () => void }) {
   const [open, setOpen] = useState(false);
   const [look, setLook] = useState<Appearance | null>(null);
   const [spend, setSpend] = useState<SpendSummary | null>(null);
@@ -144,6 +144,18 @@ export default function AccountMenu({ email, trips }: { email: string; trips: Tr
               </>
             )}
           </section>
+
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onWelcome();
+            }}
+            className="mt-6 min-h-12 w-full rounded-xl border border-border font-medium"
+          >
+            How Sidequest works
+          </button>
+          <p className="mt-1 text-xs text-muted">The welcome tour again, with how to add it to your home screen.</p>
 
           <button
             type="button"

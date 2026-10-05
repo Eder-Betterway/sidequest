@@ -4,6 +4,7 @@ import { useState } from "react";
 import TabBar, { type TabId } from "./TabBar";
 import StatusLine from "./StatusLine";
 import AccountMenu from "./AccountMenu";
+import Welcome, { welcomeSeen } from "./Welcome";
 import SetupNeeded from "./SetupNeeded";
 import SignIn from "@/components/auth/SignIn";
 import { useAuth } from "@/components/auth/useAuth";
@@ -33,6 +34,8 @@ function SignedIn({ email }: { email: string }) {
   const [chosenTab, setTab] = useState<TabId | null>(null);
   const [activeId, setActiveId] = useState<string | null>(() => prefs.activeTrip());
   const [switcher, setSwitcher] = useState<"list" | "new" | null>(null);
+  // Three short screens the first time this phone opens the app.
+  const [welcome, setWelcome] = useState(() => !welcomeSeen());
   // A day to open when jumping from Today into the plan.
   const [focus, setFocus] = useState<{ date: string; n: number } | null>(null);
 
@@ -94,7 +97,7 @@ function SignedIn({ email }: { email: string }) {
             </button>
             <StatusLine />
           </div>
-          <AccountMenu email={email} trips={trips.trips} />
+          <AccountMenu email={email} trips={trips.trips} onWelcome={() => setWelcome(true)} />
         </div>
       </header>
 
@@ -133,6 +136,8 @@ function SignedIn({ email }: { email: string }) {
 
       <Toast />
       <TabBar active={tab} onChange={setTab} />
+
+      {welcome && <Welcome onDone={() => setWelcome(false)} />}
 
       {switcher && (
         <TripSwitcher
