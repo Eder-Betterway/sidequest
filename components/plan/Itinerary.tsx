@@ -14,6 +14,7 @@ import type { Note } from "@/lib/model/note";
 import QuestionsPanel from "./QuestionsPanel";
 import ChangesCard from "./ChangesCard";
 import OfflineSheet from "./OfflineSheet";
+import RouteMap from "./RouteMap";
 import type { HistoryEntry } from "@/lib/model/history";
 import { buildIcs, icsFileName } from "@/lib/plan/ics";
 
@@ -127,6 +128,10 @@ export default function Itinerary({
       </section>
 
       <QuestionsPanel trip={trip} inputs={inputs} plan={plan} notes={notes} email={email} dayDate={null} />
+      <RouteMap
+        days={plan.days}
+        onStop={(from) => document.getElementById(`stay-${from}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+      />
       {offline && <OfflineSheet trip={trip} inputs={inputs} plan={plan} email={email} onClose={() => setOffline(false)} />}
 
       {stays.map((stay, s) => {
@@ -135,7 +140,7 @@ export default function Itinerary({
         const first = stay.days[0].date;
         const last = stay.days[stay.days.length - 1].date;
         return (
-          <section key={`${stay.base}-${first}`} aria-label={stay.base}>
+          <section key={`${stay.base}-${first}`} id={`stay-${first}`} aria-label={stay.base} className="scroll-mt-4">
             {leg && <p className="mb-2 pl-1 text-xs text-muted">About {formatHours(leg.hours)} of driving</p>}
             <div className="rounded-2xl border border-border bg-surface">
               <div className="border-b border-border px-4 py-3">
