@@ -82,3 +82,48 @@ export async function weatherFor(
     return null;
   }
 }
+
+/**
+ * Cloud cover through the night (9pm to 3am local, averaged) for each
+ * evening in the forecast window. Beyond 16 days there's no useful answer,
+ * so those nights are left out rather than guessed.
+ */
+export function parseNightClouds(hourly: { time?: string[]; cloud_cover?: (number | null)[] } | undefined): { date: string; cloud: number }[] {
+  if (!hourly?.time) return [];
+  const byNight = new Map<string, number[]>();
+  hourly.time.forEach((t, i) => {
+    const v = hourly.cloud_cover?.[i];
+    if (typeof v !== "number") return;
+    const hour = Number(t.slice(11, 13));
+    // Hours after midnight belong to the evening before.
+    const night = hour >= 21 ? t.slice(0, 10) : hour <= 3 ? addDays(t.slice(0, 10), -1) : null;
+    if (night) byNight.set(night, [...(byNight.get(night) ?? []), v]);
+  });
+  return [...byNight]
+    .filter(([, vs]) => vs.length >= 4)
+    .map(([date, vs]) => ({ date, cloud: Math.round(vs.reduce((a, b) => a + b, 0) / vs.length) }));
+}
+
+export async function nightCloudsFor(
+  lat: number,
+  lng: number,
+  from: string,
+  to: string,
+  today: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<{ date: string; cloud: number }[]> {
+  const plan = weatherPlan(from, to, today);
+  if (plan.kind !== "forecast") return [];
+  const end = addDays(plan.to, 1) > addDays(today, FORECAST_DAYS - 1) ? plan.to : addDays(plan.to, 1);
+  try {
+    const res = await fetchImpl(
+      `https://api.open-meteo.com/v1/forecast?hourly=cloud_cover&latitude=${lat}&longitude=${lng}&timezone=auto&start_date=${plan.from}&end_date=${end}`,
+      { signal: AbortSignal.timeout(6000) }
+    );
+    if (!res.ok) return [];
+    const body = (await res.json()) as { hourly?: { time?: string[]; cloud_cover?: (number | null)[] } };
+    return parseNightClouds(body.hourly).filter((n) => n.date >= from && n.date <= to);
+  } catch {
+    return [];
+  }
+}

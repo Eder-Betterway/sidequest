@@ -4,7 +4,8 @@ import { callAi, todayIso } from "@/lib/ai/client";
 import type { Usage } from "@/lib/ai/claude";
 import { saveCachedPlace, saveTripPlaceInfo } from "@/lib/data/places";
 import type { TripInputs } from "@/lib/model/inputs";
-import { placeKey, type Holiday, type PlaceInfo, type Source, type TripPlaceInfo, type WeatherDay, type WikiSummary } from "@/lib/model/place";
+import type { Glow } from "@/lib/grounding/sky";
+import { placeKey, type NightCloud, type Holiday, type PlaceInfo, type Source, type TripPlaceInfo, type WeatherDay, type WikiSummary } from "@/lib/model/place";
 import type { Trip } from "@/lib/model/trip";
 
 export interface PlaceTarget {
@@ -15,7 +16,13 @@ export interface PlaceTarget {
   countryCode: string | null;
 }
 
-type Facts = { wiki: WikiSummary | null; weather: { kind: "forecast" | "last-year"; days: WeatherDay[] } | null; holidays: Holiday[] };
+type Facts = {
+  wiki: WikiSummary | null;
+  weather: { kind: "forecast" | "last-year"; days: WeatherDay[] } | null;
+  holidays: Holiday[];
+  nightClouds?: NightCloud[];
+  glow?: Glow | null;
+};
 
 /**
  * Look up a place for these dates and save it for offline: real facts
@@ -68,6 +75,9 @@ export async function loadPlace(args: {
       weather: facts.data.weather?.days ?? [],
       weatherKind: facts.data.weather?.kind ?? null,
       holidays: facts.data.holidays,
+      nightClouds: facts.data.nightClouds ?? [],
+      // Keep the last good estimate if the lookup failed this time.
+      glow: facts.data.glow ?? previous?.glow ?? null,
       from,
       to,
       fetchedAt: Date.now(),

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Glow } from "@/lib/grounding/sky";
 
 /**
  * Place deep-dives: what's worth knowing about a stop, for these two
@@ -64,9 +65,18 @@ export interface TripPlaceInfo {
   weather: WeatherDay[];
   weatherKind: "forecast" | "last-year" | null;
   holidays: Holiday[];
+  /** Forecast cloud cover after dark, per evening (forecast range only). Missing on older saves. */
+  nightClouds?: NightCloud[];
+  /** Town-light estimate for stargazing. Missing on older saves, null if it couldn't be looked up. */
+  glow?: Glow | null;
   from: string;
   to: string;
   fetchedAt: number;
+}
+
+export interface NightCloud {
+  date: string;
+  cloud: number;
 }
 
 // ---------- Grounding results ----------

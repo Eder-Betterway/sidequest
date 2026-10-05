@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { signIn, TESTER } from "./firebase";
 import { plannedTrip } from "./helpers";
 
-test("dig into a stop: story, light, weather, holidays, what's on, hours, and it reads offline", async ({ page, context }) => {
+test("dig into a stop: story, light, weather, stargazing, holidays, what's on, hours, and it reads offline", async ({ page, context }) => {
   await signIn(page, TESTER);
   await plannedTrip(page, "Desert deep-dive");
   await page.getByRole("button", { name: /Day 2, Tuesday, Nov 3/ }).click();
@@ -13,6 +13,11 @@ test("dig into a stop: story, light, weather, holidays, what's on, hours, and it
   await expect(sheet.getByRole("region", { name: "Light", exact: true })).toContainText("Sunrise");
   await expect(sheet.getByRole("region", { name: "Forecast", exact: true })).toContainText("Clear");
   await expect(sheet.getByRole("region", { name: "Public holidays", exact: true })).toContainText("Sample Day");
+  const stars = sheet.getByRole("region", { name: "Stargazing", exact: true });
+  await expect(stars).toContainText("Dark: faint glow low on the horizon. Most glow from Sample Town");
+  await expect(stars.getByRole("listitem")).toHaveCount(3);
+  await expect(stars).toContainText("clouds 5%");
+  await expect(stars).toContainText(/Dark with no moon|The moon is up all night/);
   await expect(sheet.getByRole("link", { name: "Saturday farmers market" })).toHaveAttribute("href", "https://example.com/market");
   await expect(sheet.getByRole("region", { name: "History", exact: true })).toContainText("trading post");
   await expect(sheet.getByRole("link", { name: /Wikipedia/ })).toBeVisible();
@@ -34,6 +39,7 @@ test("dig into a stop: story, light, weather, holidays, what's on, hours, and it
   await page.getByRole("button", { name: "About Joshua Tree ›" }).click();
   const offline = page.getByRole("dialog", { name: "Joshua Tree" });
   await expect(offline.getByRole("region", { name: "Highlights", exact: true })).toContainText("The overlook trail");
+  await expect(offline.getByRole("region", { name: "Stargazing", exact: true })).toContainText("Milky Way core");
   await expect(offline.getByRole("button", { name: "Opening hours need signal" })).toBeDisabled();
   await context.setOffline(false);
 });

@@ -6,6 +6,7 @@ import { useOnline } from "@/components/shell/useOnline";
 import { useNow } from "@/components/shell/useNow";
 import { callAi } from "@/lib/ai/client";
 import { loadPlace, type PlaceTarget } from "./loadPlace";
+import Stargazing from "./Stargazing";
 import { watchCachedPlace, watchTripPlaceInfo } from "@/lib/data/places";
 import { sunTimes } from "@/lib/grounding/sun";
 import type { TripInputs } from "@/lib/model/inputs";
@@ -153,6 +154,19 @@ export default function PlaceSheet({
             </ul>
             <SourceNote>Open-Meteo</SourceNote>
           </Section>
+        )}
+
+        {target.lat !== null && target.lng !== null && target.timezone && (
+          <Stargazing
+            lat={target.lat}
+            lng={target.lng}
+            timezone={target.timezone}
+            from={from}
+            to={to}
+            units={units}
+            nightClouds={saved?.nightClouds ?? []}
+            glow={saved?.glow}
+          />
         )}
 
         {saved && saved.holidays.length > 0 && (

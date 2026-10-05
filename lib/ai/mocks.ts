@@ -1,3 +1,4 @@
+import { glowFrom, type Glow } from "@/lib/grounding/sky";
 import { dayCount, type TripInputs } from "@/lib/model/inputs";
 import type { DayDraft, PlanItemDraft, TripOption } from "@/lib/model/plan";
 import type { FlyerEvent } from "@/lib/model/note";
@@ -98,6 +99,8 @@ export function mockPlaceFacts(name: string, from: string): {
   wiki: WikiSummary;
   weather: { kind: "forecast"; days: WeatherDay[] };
   holidays: Holiday[];
+  nightClouds: { date: string; cloud: number }[];
+  glow: Glow;
 } {
   return {
     wiki: { title: name, extract: `${name} is a sample place used in tests. It has a long and colorful past.`, url: "https://en.wikipedia.org/wiki/Sample" },
@@ -106,6 +109,8 @@ export function mockPlaceFacts(name: string, from: string): {
       days: [{ date: from, high: 24, low: 9, rain: 10, rainUnit: "%", label: "Clear" }],
     },
     holidays: [{ date: from, name: "Sample Day" }],
+    nightClouds: [{ date: from, cloud: 5 }],
+    glow: glowFrom([{ name: "Sample Town", population: 30000, km: 40 }]),
   };
 }
 
