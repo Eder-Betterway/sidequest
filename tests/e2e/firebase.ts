@@ -41,7 +41,9 @@ export async function setAllowlist(emails: string[]) {
   if (!res.ok) throw new Error(`Couldn't write the allowlist: ${await res.text()}`);
 }
 
-export async function signIn(page: Page, email: string) {
+export async function signIn(page: Page, email: string, opts: { welcome?: boolean } = {}) {
+  // Tests skip the first-run welcome unless they're about it.
+  if (!opts.welcome) await page.addInitScript(() => localStorage.setItem("sidequest_welcome_seen", "1"));
   await page.goto("/");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
