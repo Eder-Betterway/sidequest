@@ -1,5 +1,6 @@
 import { requireMember } from "@/lib/ai/guard";
-import { onCount, streamJob } from "@/lib/ai/progress";
+import { onCount } from "@/lib/ai/progress";
+import { streamJob } from "@/lib/ai/stream-job";
 import { addUsage, runStructured, type Usage } from "@/lib/ai/claude";
 import { mockOptions } from "@/lib/ai/mocks";
 import { OPTIONS_SYSTEM, optionsPrompt } from "@/lib/ai/prompts/options";

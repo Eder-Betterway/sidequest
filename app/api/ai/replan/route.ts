@@ -1,5 +1,6 @@
 import { requireMember } from "@/lib/ai/guard";
-import { onCount, streamJob } from "@/lib/ai/progress";
+import { onCount } from "@/lib/ai/progress";
+import { streamJob } from "@/lib/ai/stream-job";
 import { runStructured } from "@/lib/ai/claude";
 import { mockReplan } from "@/lib/ai/mocks";
 import { REPLAN_SYSTEM, replanPrompt } from "@/lib/ai/prompts/replan";

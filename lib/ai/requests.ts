@@ -114,12 +114,29 @@ export const RerouteRequestSchema = z.object({
         date: ISO,
         base: z.string().max(200),
         title: z.string().max(200),
-        items: z.array(PlanItemSchema.extend({ locked: z.boolean() })).max(40),
+        /** When the day was last edited, so the server can save a suggestion that spots later edits. */
+        updatedAt: z.number().optional(),
+        items: z
+          .array(PlanItemSchema.extend({ locked: z.boolean(), id: z.string().max(100).optional(), updatedAt: z.number().optional() }))
+          .max(40),
         ...Coords,
       })
     )
     .min(1)
     .max(60),
+  /**
+   * Save the suggestion on the server, as the person asking, so it lands even
+   * if the phone locks before the answer arrives.
+   */
+  save: z
+    .object({
+      tripId: z.string().min(1).max(100),
+      /** Pending suggestions this replaces. */
+      previous: z.array(z.string().max(100)).max(20).default([]),
+      draftIds: z.array(z.string().max(100)).max(50).default([]),
+      requests: z.number().int().min(1).max(50).default(1),
+    })
+    .optional(),
   /** What they want: "Stay in Palm Springs through this day for the wedding", or several drafts at once. */
   instruction: z.string().min(1).max(8000),
   /** The day they asked from, if any. */

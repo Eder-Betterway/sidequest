@@ -43,8 +43,10 @@ function statusError(status: number): string {
 export async function callAiStream<T>(
   path: string,
   body: unknown,
-  onProgress: (e: Extract<JobEvent, { type: "progress" }>) => void
-): Promise<AiCall<T>> {
+  onProgress: (e: Extract<JobEvent, { type: "progress" }>) => void,
+  /** Hears the job id when the server is tracking the job and will save its result itself. */
+  onJob?: (id: string) => void
+): Promise<AiCall<T> | { ok: false; error: string; dropped: true }> {
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     return { ok: false, error: "This needs signal. Try again when you're back online." };
   }
@@ -67,13 +69,14 @@ export async function callAiStream<T>(
     return { ok: false, error: json.error ?? statusError(res.status) };
   }
   try {
-    const outcome = await readJob(res.body, onProgress);
+    const outcome = await readJob(res.body, onProgress, onJob);
     if (outcome) return outcome.type === "result" ? { ok: true, data: outcome.data as T } : { ok: false, error: outcome.error };
   } catch {
     // fall through
   }
   return {
     ok: false,
+    dropped: true,
     error: "The connection dropped while Claude was working (this can happen if the screen locks). Try again and keep the app open.",
   };
 }
@@ -81,7 +84,8 @@ export async function callAiStream<T>(
 /** Read newline-delimited job events until a result or error arrives. */
 export async function readJob(
   stream: ReadableStream<Uint8Array>,
-  onProgress: (e: Extract<JobEvent, { type: "progress" }>) => void
+  onProgress: (e: Extract<JobEvent, { type: "progress" }>) => void,
+  onJob?: (id: string) => void
 ): Promise<Extract<JobEvent, { type: "result" | "error" }> | null> {
   const reader = stream.getReader();
   const dec = new TextDecoder();
@@ -100,6 +104,7 @@ export async function readJob(
         continue;
       }
       if (e.type === "progress") onProgress(e);
+      else if (e.type === "job") onJob?.(e.id);
       else if (e.type === "result" || e.type === "error") return e;
     }
     if (done) return null;

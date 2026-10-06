@@ -156,3 +156,49 @@ test("suggesting shows live progress, and a failure says why and keeps the draft
   await sheet.getByRole("button", { name: "Suggest changes" }).click();
   await expect(page.getByRole("dialog", { name: "Suggested trip changes" })).toBeVisible();
 });
+
+test("a trip change still lands if the phone loses the connection, and both phones see it working", async ({ page }) => {
+  await signIn(page, TESTER);
+  await plannedTrip(page, "Locked phone");
+
+  // Let the server finish, but hand the phone only the start of the answer, like a phone that locked mid-way.
+  await page.route("**/api/ai/reroute", async (route) => {
+    const res = await route.fetch();
+    const lines = (await res.text()).split("\n").filter((l) => l.includes('"type":"job"') || l.includes('"type":"progress"'));
+    await route.fulfill({ status: 200, headers: { "content-type": "application/x-ndjson" }, body: lines.join("\n") + "\n" });
+  });
+  await page.getByRole("button", { name: "Change Wednesday, Nov 4" }).click();
+  const sheet = page.getByRole("dialog", { name: "Change Wednesday, Nov 4" });
+  await sheet.getByLabel("What should change?").fill("Stay in Palm Springs for the wedding");
+  await sheet.getByRole("button", { name: "Suggest changes" }).click();
+  await expect(sheet).toContainText("Lost the connection, but Claude is still working on it");
+  await sheet.getByRole("button", { name: "Close" }).click();
+  // The server saved it as this person, so it shows up without the phone ever getting the answer.
+  await page.getByRole("button", { name: "Suggested trip changes ready" }).click();
+  const review = page.getByRole("dialog", { name: "Suggested trip changes" });
+  await expect(review.getByRole("checkbox", { name: /Wednesday, Nov 4/ })).toBeChecked();
+  await review.getByRole("button", { name: "Close" }).click();
+  await page.unroute("**/api/ai/reroute");
+
+  // While Claude works, the itinerary says so (on every phone, from the trip itself).
+  await page.getByRole("button", { name: "Change Tuesday, Nov 3" }).click();
+  let other = page.getByRole("dialog", { name: "Change Tuesday, Nov 3" });
+  await other.getByLabel("What should change?").fill("Slow morning [mock:slow]");
+  await other.getByRole("button", { name: "Suggest changes" }).click();
+  await expect(page.getByRole("status", { name: "Claude is working" })).toContainText("Claude is working on a change you asked for");
+  await expect(page.getByRole("dialog", { name: "Suggested trip changes" })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("status", { name: "Claude is working" })).toBeHidden();
+  await page.getByRole("dialog", { name: "Suggested trip changes" }).getByRole("button", { name: "Close" }).click();
+
+  // A failure shows on the itinerary too, until someone dismisses it.
+  await page.getByRole("button", { name: "Change Tuesday, Nov 3" }).click();
+  other = page.getByRole("dialog", { name: "Change Tuesday, Nov 3" });
+  await other.getByLabel("What should change?").fill("Everything at once [mock:too-long]");
+  await other.getByRole("button", { name: "Suggest changes" }).click();
+  await expect(other.getByRole("alert")).toContainText("ran too long");
+  await other.getByRole("button", { name: "Close" }).click();
+  const failed = page.getByRole("alert", { name: "Claude couldn't finish" });
+  await expect(failed).toContainText("ran too long");
+  await failed.getByRole("button", { name: "Got it" }).click();
+  await expect(failed).toBeHidden();
+});
