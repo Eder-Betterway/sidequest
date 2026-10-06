@@ -95,8 +95,8 @@ describe("progress", () => {
   it("reads events split across chunks, skipping heartbeats", async () => {
     const seen: string[] = [];
     const out = await readJob(
-      streamOf(['{"type":"progress","stage":"rea', 'ding"}\n{"type":"tick"}\n', '{"type":"progress","stage":"writing","days":2}\n{"type":"result","data":{"x":1}}\n']),
-      (e) => seen.push(`${e.stage}${e.days ?? ""}`)
+      streamOf(['{"type":"progress","stage":"rea', 'ding"}\n{"type":"tick"}\n', '{"type":"progress","stage":"writing","count":2}\n{"type":"result","data":{"x":1}}\n']),
+      (e) => seen.push(`${e.stage}${e.count ?? ""}`)
     );
     expect(seen).toEqual(["reading", "writing2"]);
     expect(out).toEqual({ type: "result", data: { x: 1 } });
@@ -114,7 +114,7 @@ describe("progress", () => {
 
   it("moves the bar forward with stages and time, never to 100", () => {
     const t0 = 1_000_000;
-    const at = (stage: "reading" | "thinking" | "writing" | "places" | "saving", secs: number, days = 0) => jobPercent({ stage, days, startedAt: t0 }, t0 + secs * 1000, 4);
+    const at = (stage: "reading" | "thinking" | "writing" | "places" | "saving", secs: number, count = 0) => jobPercent({ stage, count, startedAt: t0 }, t0 + secs * 1000, 90, 4);
     expect(at("thinking", 1)).toBeLessThan(at("thinking", 60));
     expect(at("thinking", 600)).toBeLessThan(35.01);
     expect(at("writing", 30, 2)).toBeGreaterThan(at("writing", 30, 1));

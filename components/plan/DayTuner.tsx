@@ -8,6 +8,7 @@ import type { Trip } from "@/lib/model/trip";
 import type { Proposal } from "@/lib/plan/proposal";
 import { DIALS, effectiveVibe, vibeChanged, type DialKey, type VibeOverride } from "@/lib/plan/vibe";
 import { useOnline } from "@/components/shell/useOnline";
+import JobProgress, { advance, startJob, type JobState } from "@/components/ui/JobProgress";
 import VibeDials from "./VibeDials";
 import ProposalSheet from "./ProposalSheet";
 import { replanDay } from "./replan";
@@ -35,6 +36,7 @@ export default function DayTuner({
   const online = useOnline();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [job, setJob] = useState<JobState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState(false);
 
@@ -66,6 +68,8 @@ export default function DayTuner({
   async function replan() {
     setBusy(true);
     setError(null);
+    const started = startJob();
+    setJob(started);
     const res = await replanDay({
       trip,
       inputs: { ...inputs },
@@ -74,8 +78,10 @@ export default function DayTuner({
       pendingForDay: pending,
       reason: changed ? "You changed this day's vibe." : "You asked for a fresh take on this day.",
       email,
+      onProgress: (e) => setJob((j) => advance(j ?? started, e)),
     });
     setBusy(false);
+    setJob(null);
     if (!res.ok) return setError(res.error);
     setReviewing(true);
   }
@@ -113,6 +119,9 @@ export default function DayTuner({
         </button>
       </div>
       {!online && <p className="text-xs text-warn">Re-planning needs signal. Dial changes still save.</p>}
+      {job && (
+        <JobProgress job={job} unit="items" typicalSecs={40} labels={{ thinking: "Claude is rethinking the day", writing: "Claude is writing the new plan" }} />
+      )}
       {error && (
         <p role="alert" className="text-sm text-warn">
           {error}

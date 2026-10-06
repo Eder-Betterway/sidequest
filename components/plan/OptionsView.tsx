@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { callAi, todayIso } from "@/lib/ai/client";
+import { callAiStream, todayIso } from "@/lib/ai/client";
+import JobProgress, { advance, startJob, type JobState } from "@/components/ui/JobProgress";
 import { logAiRun, replacePlan, saveOptions, type ExpandedDay } from "@/lib/data/plan";
 import { missingForOptions, type TripInputs } from "@/lib/model/inputs";
 import type { StoredOption, TripOption } from "@/lib/model/plan";
@@ -34,18 +35,22 @@ export default function OptionsView({
   const online = useOnline();
   const [busy, setBusy] = useState<"drafting" | string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [job, setJob] = useState<JobState | null>(null);
   const missing = missingForOptions(trip, inputs);
   const brief = { title: trip.title, startDate: trip.startDate!, endDate: trip.endDate! };
 
   async function draft() {
     setBusy("drafting");
     setError(null);
-    const res = await callAi<{ options: TripOption[]; usage: Usage | null }>("/api/ai/options", {
-      trip: brief,
-      inputs,
-      today: todayIso(),
-    });
+    const started = startJob();
+    setJob(started);
+    const res = await callAiStream<{ options: TripOption[]; usage: Usage | null }>(
+      "/api/ai/options",
+      { trip: brief, inputs, today: todayIso() },
+      (e) => setJob((j) => advance(j ?? started, e))
+    );
     setBusy(null);
+    setJob(null);
     if (!res.ok) return setError(res.error);
     saveOptions(trip.id, res.data.options, plan.options.map((o) => o.id), email);
     logAiRun(trip.id, "options", res.data.usage, email);
@@ -55,13 +60,15 @@ export default function OptionsView({
     if (plan.days.length && !confirm("This replaces the current day plan, including your edits. Go ahead?")) return;
     setBusy(option.id);
     setError(null);
-    const res = await callAi<{ days: ExpandedDay[]; usage: Usage | null }>("/api/ai/expand", {
-      trip: brief,
-      inputs,
-      option: stripStored(option),
-      today: todayIso(),
-    });
+    const started = startJob();
+    setJob(started);
+    const res = await callAiStream<{ days: ExpandedDay[]; usage: Usage | null }>(
+      "/api/ai/expand",
+      { trip: brief, inputs, option: stripStored(option), today: todayIso() },
+      (e) => setJob((j) => advance(j ?? started, e))
+    );
     setBusy(null);
+    setJob(null);
     if (!res.ok) return setError(res.error);
     replacePlan(
       trip.id,
@@ -98,8 +105,14 @@ export default function OptionsView({
         {busy === "drafting" ? "Drafting 3 options..." : plan.options.length ? "Draft 3 new options" : "Draft 3 options"}
       </button>
       {!online && <p className="text-sm text-warn">Drafting options needs signal.</p>}
-      {busy === "drafting" && (
-        <p className="text-sm text-muted">This takes a minute or two. Weighing your milestones, route, and interests.</p>
+      {busy === "drafting" && job && (
+        <JobProgress
+          job={job}
+          unit="options"
+          expected={3}
+          typicalSecs={100}
+          labels={{ thinking: "Claude is weighing your milestones, route, and interests", writing: "Claude is writing the options" }}
+        />
       )}
       {error && (
         <p role="alert" className="text-sm text-warn">
@@ -151,6 +164,16 @@ export default function OptionsView({
             >
               {busy === o.id ? "Building your days..." : chosen ? "Rebuild days from this one" : "Pick this one"}
             </button>
+            {busy === o.id && job && (
+              <div className="mt-3">
+                <JobProgress
+                  job={job}
+                  unit="days"
+                  typicalSecs={90}
+                  labels={{ thinking: "Claude is laying out your days", writing: "Claude is planning days", places: "Looking up each stop on the map" }}
+                />
+              </div>
+            )}
           </article>
         );
       })}

@@ -11,7 +11,7 @@ import type { TripInputs } from "@/lib/model/inputs";
 import type { Trip } from "@/lib/model/trip";
 import { rerouteTrip } from "./reroute";
 import MicButton from "@/components/voice/MicButton";
-import JobProgress, { startJob, type JobState } from "@/components/ui/JobProgress";
+import JobProgress, { advance, startJob, type JobState } from "@/components/ui/JobProgress";
 import type { PlanState } from "./usePlan";
 
 export function longDate(iso: string) {
@@ -90,10 +90,10 @@ export default function ChangeSheet({
 
     const { instruction, focusDate: focus } = combineRequests(requests, focusDate);
     setBusy(true);
-    const { startedAt } = startJob();
+    const started = startJob();
     // A rough idea of how many days will change, for the progress bar.
     setExpectedDays(Math.max(new Set(requests.map((r) => r.dayDate ?? "trip")).size, requests.some((r) => !r.dayDate) ? 3 : 1));
-    setJob({ stage: "reading", days: 0, startedAt });
+    setJob(started);
     const res = await rerouteTrip({
       trip,
       inputs: next,
@@ -102,7 +102,7 @@ export default function ChangeSheet({
       focusDate: focus,
       draftIds: scoped.map((d) => d.id),
       email,
-      onProgress: (e) => setJob({ stage: e.stage, days: e.days ?? 0, startedAt }),
+      onProgress: (e) => setJob((j) => advance(j ?? started, e)),
     });
     setBusy(false);
     setJob(null);
@@ -155,7 +155,15 @@ export default function ChangeSheet({
           </p>
         )}
         {result && <p className="rounded-xl bg-surface-2 p-3 text-sm">{result}</p>}
-        {job && <JobProgress job={job} expectedDays={expectedDays} />}
+        {job && (
+          <JobProgress
+            job={job}
+            expected={expectedDays}
+            unit="days"
+            typicalSecs={120}
+            labels={{ reading: "Reading your trip and the weather", writing: "Claude is rewriting days", places: "Looking up new places on the map", saving: "Saving the suggestion" }}
+          />
+        )}
         <div className="flex gap-3">
           <button
             type="button"

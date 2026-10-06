@@ -1,4 +1,5 @@
 import { requireMember } from "@/lib/ai/guard";
+import { onCount, streamJob } from "@/lib/ai/progress";
 import { addUsage, runStructured, type Usage } from "@/lib/ai/claude";
 import { mockOptions } from "@/lib/ai/mocks";
 import { OPTIONS_SYSTEM, optionsPrompt } from "@/lib/ai/prompts/options";
@@ -9,6 +10,7 @@ import { OptionsResultSchema, tooSimilar, type TripOption } from "@/lib/model/pl
 
 // Opus at high effort can think for a while on a long trip.
 export const maxDuration = 300;
+const DEADLINE_MS = 270_000;
 
 function anyTooSimilar(options: TripOption[]): boolean {
   for (let i = 0; i < options.length; i++)
@@ -32,31 +34,47 @@ export async function POST(req: Request) {
     return Response.json({ error: `Sidequest plans up to ${MAX_TRIP_DAYS} days at a time. Split this one into parts.` }, { status: 400 });
   }
 
-  if (process.env.AI_MOCK === "1") {
-    // A made-up usage so the spend estimate has something to show in tests.
-    return Response.json({ options: mockOptions(trip, inputs), usage: { model: "claude-opus-5-5", inputTokens: 20000, outputTokens: 5000, cacheReadTokens: 0 } });
-  }
-
-  const brief = describeTrip(trip, inputs, today);
-  const usages: Usage[] = [];
-  let prompt = optionsPrompt(brief);
-
-  // One retry if two options are basically the same trip.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const result = await runStructured({
-      role: "planner",
-      effort: "high",
-      system: OPTIONS_SYSTEM,
-      prompt,
-      schema: OptionsResultSchema,
-      maxTokens: 16000,
-    });
-    if (!result.ok) return Response.json({ error: result.error }, { status: result.status });
-    usages.push(result.usage);
-    if (!anyTooSimilar(result.data.options) || attempt === 1) {
-      return Response.json({ options: result.data.options, usage: addUsage(usages) });
+  return streamJob(async (progress) => {
+    progress("reading");
+    if (process.env.AI_MOCK === "1") {
+      progress("thinking");
+      await pause(100);
+      [1, 2, 3].forEach((count) => progress("writing", { count, total: 3 }));
+      // A made-up usage so the spend estimate has something to show in tests.
+      return { ok: true, data: { options: mockOptions(trip, inputs), usage: { model: "claude-opus-5-5", inputTokens: 20000, outputTokens: 5000, cacheReadTokens: 0 } } };
     }
-    prompt += "\n\nYour last three options overlapped too much. Make each a clearly different route or rhythm.";
-  }
-  return Response.json({ error: "Couldn't draft options. Try again." }, { status: 502 });
+
+    const brief = describeTrip(trip, inputs, today);
+    const usages: Usage[] = [];
+    let prompt = optionsPrompt(brief);
+    // One clock for both attempts, so the retry can't run past the limit.
+    const started = Date.now();
+    const left = () => DEADLINE_MS - (Date.now() - started);
+
+    // One retry if two options are basically the same trip.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      progress("thinking");
+      const result = await runStructured(
+        {
+          role: "planner",
+          effort: "high",
+          system: OPTIONS_SYSTEM,
+          prompt,
+          schema: OptionsResultSchema,
+          maxTokens: 16000,
+        },
+        { deadlineMs: left(), onText: onCount("pitch", (count) => progress("writing", { count, total: 3 })) }
+      );
+      if (!result.ok) return result;
+      usages.push(result.usage);
+      // Too similar, but not enough time left to try again: keep what we have.
+      if (!anyTooSimilar(result.data.options) || attempt === 1 || left() < 90_000) {
+        return { ok: true, data: { options: result.data.options, usage: addUsage(usages) } };
+      }
+      prompt += "\n\nYour last three options overlapped too much. Make each a clearly different route or rhythm.";
+    }
+    return { ok: false, status: 502, error: "Couldn't draft options. Try again." };
+  });
 }
+
+const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
