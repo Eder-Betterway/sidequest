@@ -102,10 +102,16 @@ export default function ChangeSheet({
       focusDate: focus,
       draftIds: scoped.map((d) => d.id),
       email,
+      requests: requests.length,
       onProgress: (e) => setJob((j) => advance(j ?? started, e)),
     });
     setBusy(false);
     setJob(null);
+    if (!res.ok && res.stillWorking) {
+      // The server has it and will save the suggestion; what was typed is part of that request.
+      setText("");
+      return setResult("Lost the connection, but Claude is still working on it. The suggestion will show up on the itinerary when it's ready, on both phones. You can close this.");
+    }
     if (!res.ok) {
       // Nothing typed gets lost: it waits as a draft.
       if (typed) saveDraft();

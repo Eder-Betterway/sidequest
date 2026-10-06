@@ -1,5 +1,5 @@
 import { requireMember } from "@/lib/ai/guard";
-import { streamJob } from "@/lib/ai/progress";
+import { streamJob } from "@/lib/ai/stream-job";
 import { addUsage, runStructured } from "@/lib/ai/claude";
 import { mockPlaceInfo } from "@/lib/ai/mocks";
 import { research } from "@/lib/ai/research";

@@ -13,6 +13,7 @@ import type { ChangeDraft } from "@/lib/model/draft";
 import type { Note } from "@/lib/model/note";
 import QuestionsPanel from "./QuestionsPanel";
 import ChangesCard from "./ChangesCard";
+import JobsBanner from "./JobsBanner";
 import OfflineSheet from "./OfflineSheet";
 import RouteMap from "./RouteMap";
 import type { HistoryEntry } from "@/lib/model/history";
@@ -86,6 +87,7 @@ export default function Itinerary({
 
   return (
     <div className="space-y-4">
+      <JobsBanner tripId={trip.id} email={email} />
       <ChangesCard trip={trip} email={email} plan={plan} notes={notes} history={history} />
       <section className="rounded-2xl border border-border bg-surface p-4">
         <h2 className="font-semibold">Your itinerary</h2>

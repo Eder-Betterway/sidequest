@@ -1,5 +1,6 @@
 import { requireMember } from "@/lib/ai/guard";
-import { daysWritten, streamJob } from "@/lib/ai/progress";
+import { daysWritten } from "@/lib/ai/progress";
+import { streamJob } from "@/lib/ai/stream-job";
 import { addUsage, runStructured, type Usage } from "@/lib/ai/claude";
 import { mockDays } from "@/lib/ai/mocks";
 import { EXPAND_SYSTEM, expandPrompt } from "@/lib/ai/prompts/expand";
