@@ -1,6 +1,7 @@
 "use client";
 
-import { callAi, todayIso } from "@/lib/ai/client";
+import { callAiStream, todayIso } from "@/lib/ai/client";
+import type { JobEvent } from "@/lib/ai/progress";
 import { logAiRun, saveProposal } from "@/lib/data/plan";
 import type { TripInputs } from "@/lib/model/inputs";
 import type { PlanItemDraft, StoredDay, StoredItem } from "@/lib/model/plan";
@@ -22,12 +23,14 @@ export async function replanDay(args: {
   reason: string;
   note?: string | null;
   email: string;
+  /** Hears each stage while Claude works. */
+  onProgress?: (e: Extract<JobEvent, { type: "progress" }>) => void;
 }): Promise<{ ok: true; changes: number } | { ok: false; error: string }> {
   const { trip, inputs, day, dayItems, email } = args;
   if (!trip.startDate || !trip.endDate) return { ok: false, error: "The trip needs dates first." };
   const vibe: Vibe = effectiveVibe(inputs.vibe, day.vibe);
 
-  const res = await callAi<{ summary: string; items: PlanItemDraft[]; usage: Usage | null }>("/api/ai/replan", {
+  const res = await callAiStream<{ summary: string; items: PlanItemDraft[]; usage: Usage | null }>("/api/ai/replan", {
     trip: { title: trip.title, startDate: trip.startDate, endDate: trip.endDate },
     inputs,
     day: { date: day.date, base: day.base, title: day.title },
@@ -43,7 +46,7 @@ export async function replanDay(args: {
     vibe,
     note: args.note ?? null,
     today: todayIso(),
-  });
+  }, args.onProgress ?? (() => {}));
   if (!res.ok) return res;
 
   const ops = diffDay(dayItems, res.data.items);

@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { readJobResponse } from "./job";
 import { POST as ask } from "@/app/api/ai/ask/route";
 import { POST as flyer } from "@/app/api/ai/flyer/route";
 import { POST as replan } from "@/app/api/ai/replan/route";
@@ -192,6 +193,6 @@ describe("POST /api/ai/replan with a tip", () => {
       })
     );
     expect(res.status).toBe(200);
-    expect((await res.json()).items.at(-1).title).toBe("Tip: Hot springs are empty at dawn");
+    expect((await readJobResponse(res)).data.items.at(-1).title).toBe("Tip: Hot springs are empty at dawn");
   });
 });

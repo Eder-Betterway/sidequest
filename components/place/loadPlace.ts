@@ -1,6 +1,7 @@
 "use client";
 
-import { callAi, todayIso } from "@/lib/ai/client";
+import { callAi, callAiStream, todayIso } from "@/lib/ai/client";
+import type { JobEvent } from "@/lib/ai/progress";
 import type { Usage } from "@/lib/ai/claude";
 import { saveCachedPlace, saveTripPlaceInfo } from "@/lib/data/places";
 import type { TripInputs } from "@/lib/model/inputs";
@@ -40,6 +41,8 @@ export async function loadPlace(args: {
   email: string;
   previous?: TripPlaceInfo | null;
   withWriteUp?: boolean;
+  /** Hears each stage while the write-up is researched. */
+  onProgress?: (e: Extract<JobEvent, { type: "progress" }>) => void;
 }): Promise<{ ok: true; writeUpError: string | null } | { ok: false; error: string }> {
   const { trip, inputs, target, from, to, email, previous } = args;
   if (!trip.startDate || !trip.endDate) return { ok: false, error: "The trip needs dates first." };
@@ -56,7 +59,7 @@ export async function loadPlace(args: {
   const ai =
     args.withWriteUp === false
       ? null
-      : await callAi<{ info: PlaceInfo; sources: Source[]; usage: Usage | null }>("/api/ai/place", {
+      : await callAiStream<{ info: PlaceInfo; sources: Source[]; usage: Usage | null }>("/api/ai/place", {
           trip: { title: trip.title, startDate: trip.startDate, endDate: trip.endDate },
           inputs,
           place: { name: target.name },
@@ -64,7 +67,7 @@ export async function loadPlace(args: {
           to,
           today,
           wiki: facts.data.wiki,
-        });
+        }, args.onProgress ?? (() => {}));
   const got = ai?.ok ? ai.data : null;
   saveCachedPlace({ key, name: target.name, wiki: facts.data.wiki, refreshedAt: Date.now() });
   saveTripPlaceInfo(

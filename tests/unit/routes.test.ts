@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { POST as options } from "@/app/api/ai/options/route";
+import { readJobResponse } from "./job";
 import { POST as expand } from "@/app/api/ai/expand/route";
 import { POST as replan } from "@/app/api/ai/replan/route";
 import { defaultInputs, MilestoneSchema } from "@/lib/model/inputs";
@@ -47,8 +48,10 @@ describe("POST /api/ai/options", () => {
   it("returns three options", async () => {
     const res = await options(post({ trip, inputs, today: "2026-09-20" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const { events, data: body } = await readJobResponse(res);
     expect(body.options).toHaveLength(3);
+    // Progress came first: reading, thinking, then each option as it's written.
+    expect(events.filter((e) => e.type === "progress").map((e) => `${e.stage}${e.count ?? ""}`)).toEqual(["reading", "thinking", "writing1", "writing2", "writing3"]);
   });
 
   it("refuses very long trips", async () => {
@@ -60,11 +63,14 @@ describe("POST /api/ai/options", () => {
 describe("POST /api/ai/expand", () => {
   it("returns one day per date with places and the milestone locked", async () => {
     const optRes = await options(post({ trip, inputs, today: "2026-09-20" }));
-    const option = (await optRes.json()).options[0];
+    const option = (await readJobResponse(optRes)).data.options[0];
     const wedding = MilestoneSchema.parse({ id: "m1", title: "Wedding", kind: "wedding", date: "2026-10-03", time: "16:00", priority: "required" });
     const res = await expand(post({ trip, inputs: { ...inputs, milestones: [wedding] }, option, today: "2026-09-20" }));
     expect(res.status).toBe(200);
-    const { days } = await res.json();
+    const { events, data } = await readJobResponse(res);
+    const { days } = data;
+    expect(events.at(-2)).toMatchObject({ type: "progress", stage: "places" });
+    expect(events.filter((e) => e.stage === "writing").at(-1)).toMatchObject({ count: 5, total: 5 });
     expect(days.map((d: { date: string }) => d.date)).toEqual(["2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04", "2026-10-05"]);
     expect(days[0].place).toMatchObject({ timezone: "America/Denver" });
     const pinned = days[2].items.find((i: { milestoneId: string | null }) => i.milestoneId === "m1");
@@ -83,7 +89,7 @@ describe("POST /api/ai/replan", () => {
     const vibe = { pace: 10, effort: 50, path: 50, nights: 50 };
     const res = await replan(post({ trip, inputs, day, items, vibe, today: "2026-09-20" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await readJobResponse(res)).data;
     expect(body.items.map((i: { title: string }) => i.title)).not.toContain("Wedding");
     expect(body.summary).toMatch(/Slowed/);
   });
@@ -107,7 +113,8 @@ describe("place routes", () => {
     expect((await hours(post({ query: "Taco truck" }))).status).toBe(200);
     const res = await deep(post({ trip, inputs, place: { name: "Moab, Utah" }, from: "2026-10-01", to: "2026-10-02", today: "2026-09-20" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const { events, data: body } = await readJobResponse(res);
+    expect(events.filter((e) => e.stage === "searching").map((e) => e.count)).toEqual([1, 2, 3]);
     expect(body.info.highlights.length).toBeGreaterThan(0);
     expect(body.sources[0].url).toMatch(/^https:/);
   });

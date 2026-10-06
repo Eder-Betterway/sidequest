@@ -1,4 +1,5 @@
 import { requireMember } from "@/lib/ai/guard";
+import { daysWritten, streamJob } from "@/lib/ai/progress";
 import { addUsage, runStructured, type Usage } from "@/lib/ai/claude";
 import { mockDays } from "@/lib/ai/mocks";
 import { EXPAND_SYSTEM, expandPrompt } from "@/lib/ai/prompts/expand";
@@ -10,6 +11,7 @@ import { DaysResultSchema, type DayDraft } from "@/lib/model/plan";
 import { chunkDates, normalizeDays, pinMilestones, stopsByDate } from "@/lib/plan/schedule";
 
 export const maxDuration = 300;
+const DEADLINE_MS = 270_000;
 
 /** Days per Claude call. Small enough to stay quick, big enough to keep flow between days. */
 const CHUNK = 4;
@@ -27,43 +29,78 @@ export async function POST(req: Request) {
   }
 
   const dates = stopsByDate(option, trip.startDate, trip.endDate);
-  let drafts: DayDraft[];
-  let usage: Usage | null = null;
 
-  if (process.env.AI_MOCK === "1") {
-    drafts = mockDays(dates);
-  } else {
-    const brief = describeTrip(trip, inputs, today);
-    const chunks = chunkDates(trip.startDate, trip.endDate, CHUNK);
-    const run = (c: { from: string; to: string }) =>
-      runStructured({
-        role: "everyday",
-        effort: "medium",
-        system: EXPAND_SYSTEM,
-        prompt: expandPrompt(brief, option, dates, c.from, c.to),
-        schema: DaysResultSchema,
-        maxTokens: 16000,
-      });
-    // The first chunk warms the prompt cache; the rest run in parallel and reuse it.
-    const first = await run(chunks[0]);
-    const rest = await Promise.all(chunks.slice(1).map(run));
-    const results = [first, ...rest];
-    const failed = results.find((r) => !r.ok);
-    if (failed && !failed.ok) return Response.json({ error: failed.error }, { status: failed.status });
-    drafts = results.flatMap((r) => (r.ok ? r.data.days : []));
-    usage = addUsage(results.flatMap((r) => (r.ok ? [r.usage] : [])));
-  }
+  return streamJob(async (progress) => {
+    let drafts: DayDraft[];
+    let usage: Usage | null = null;
+    const total = dates.length;
+    progress("reading");
 
-  const days = normalizeDays(drafts, dates);
-  const places = await geocodeAll(days.map((d) => d.base));
-  return Response.json({
-    days: days.map((d) => ({
-      date: d.date,
-      base: d.base,
-      title: d.title,
-      place: places.get(d.base) ?? null,
-      items: pinMilestones(d, inputs.milestones),
-    })),
-    usage,
+    if (process.env.AI_MOCK === "1") {
+      drafts = mockDays(dates);
+      progress("thinking");
+      await pause(100);
+      drafts.forEach((_, i) => progress("writing", { count: i + 1, total }));
+    } else {
+      const brief = describeTrip(trip, inputs, today);
+      const started = Date.now();
+      const chunks = chunkDates(trip.startDate, trip.endDate, CHUNK);
+      // Days written so far in each chunk, added up for the phone.
+      const written = chunks.map(() => 0);
+      let last = -1;
+      const report = () => {
+        const count = written.reduce((a, b) => a + b, 0);
+        if (count !== last) {
+          last = count;
+          progress("writing", { count, total });
+        }
+      };
+      const run = (c: { from: string; to: string }, i: number) =>
+        runStructured(
+          {
+            role: "everyday",
+            effort: "medium",
+            system: EXPAND_SYSTEM,
+            prompt: expandPrompt(brief, option, dates, c.from, c.to),
+            schema: DaysResultSchema,
+            maxTokens: 16000,
+          },
+          {
+            deadlineMs: DEADLINE_MS - (Date.now() - started),
+            onText: (soFar) => {
+              written[i] = daysWritten(soFar);
+              report();
+            },
+          }
+        );
+      progress("thinking");
+      // The first chunk warms the prompt cache; the rest run in parallel and reuse it.
+      const first = await run(chunks[0], 0);
+      const rest = await Promise.all(chunks.slice(1).map((c, i) => run(c, i + 1)));
+      const results = [first, ...rest];
+      const failed = results.find((r) => !r.ok);
+      if (failed && !failed.ok) return failed;
+      drafts = results.flatMap((r) => (r.ok ? r.data.days : []));
+      usage = addUsage(results.flatMap((r) => (r.ok ? [r.usage] : [])));
+    }
+
+    progress("places");
+    const days = normalizeDays(drafts, dates);
+    const places = await geocodeAll(days.map((d) => d.base));
+    return {
+      ok: true,
+      data: {
+        days: days.map((d) => ({
+          date: d.date,
+          base: d.base,
+          title: d.title,
+          place: places.get(d.base) ?? null,
+          items: pinMilestones(d, inputs.milestones),
+        })),
+        usage,
+      },
+    };
   });
 }
+
+const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));

@@ -36,7 +36,12 @@ export function textOf(content: Anthropic.Beta.BetaContentBlock[]): string {
     .join("");
 }
 
-export async function research(system: string, prompt: string, maxSearches = 4): Promise<ResearchResult> {
+export async function research(
+  system: string,
+  prompt: string,
+  maxSearches = 4,
+  opts: { onSearch?: (count: number) => void; deadlineMs?: number } = {}
+): Promise<ResearchResult> {
   if (!process.env.ANTHROPIC_API_KEY) {
     return { ok: false, status: 503, error: "The AI isn't set up on the server yet (ANTHROPIC_API_KEY)." };
   }
@@ -44,9 +49,12 @@ export async function research(system: string, prompt: string, maxSearches = 4):
   const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: prompt }];
   const usage: Usage = { model: "", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, webSearches: 0 };
 
+  let searches = 0;
+  const signal = opts.deadlineMs ? AbortSignal.timeout(opts.deadlineMs) : undefined;
   try {
     for (let turn = 0; turn <= MAX_CONTINUATIONS; turn++) {
-      const response = await client.beta.messages.create({
+      // Streamed, so each web search can be reported as it starts.
+      const stream = client.beta.messages.stream({
         model: MODELS.everyday,
         max_tokens: 8000,
         system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
@@ -55,7 +63,11 @@ export async function research(system: string, prompt: string, maxSearches = 4):
         output_config: { effort: "medium" },
         betas: ["server-side-fallback-2026-07-01"],
         fallbacks: "default",
+      }, signal ? { signal } : undefined);
+      stream.on("streamEvent", (event) => {
+        if (event.type === "content_block_start" && event.content_block.type === "server_tool_use") opts.onSearch?.(++searches);
       });
+      const response = await stream.finalMessage();
       usage.model ||= response.model;
       usage.inputTokens += response.usage.input_tokens;
       usage.outputTokens += response.usage.output_tokens;
@@ -76,6 +88,6 @@ export async function research(system: string, prompt: string, maxSearches = 4):
     }
     return { ok: false, status: 502, error: "The research took too long. Try again." };
   } catch (err) {
-    return { ok: false, ...friendlyError(err) };
+    return { ok: false, ...friendlyError(err, opts.deadlineMs) };
   }
 }

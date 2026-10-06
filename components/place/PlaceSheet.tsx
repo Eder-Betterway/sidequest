@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Sheet from "@/components/ui/Sheet";
 import { useOnline } from "@/components/shell/useOnline";
 import { useNow } from "@/components/shell/useNow";
+import JobProgress, { advance, startJob, type JobState } from "@/components/ui/JobProgress";
 import { callAi } from "@/lib/ai/client";
 import { loadPlace, type PlaceTarget } from "./loadPlace";
 import Stargazing from "./Stargazing";
@@ -55,6 +56,7 @@ export default function PlaceSheet({
   const [cached, setCached] = useState<CachedPlace | null | undefined>(undefined);
   const [saved, setSaved] = useState<TripPlaceInfo | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
+  const [job, setJob] = useState<JobState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hours, setHours] = useState<HoursResult | null>(null);
   const [hoursBusy, setHoursBusy] = useState(false);
@@ -65,8 +67,20 @@ export default function PlaceSheet({
   async function load() {
     setBusy(true);
     setError(null);
-    const res = await loadPlace({ trip, inputs, target, from, to, email, previous: saved });
+    const started = startJob();
+    setJob(started);
+    const res = await loadPlace({
+      trip,
+      inputs,
+      target,
+      from,
+      to,
+      email,
+      previous: saved,
+      onProgress: (e) => setJob((j) => advance(j ?? started, e)),
+    });
     setBusy(false);
+    setJob(null);
     if (!res.ok) return setError(res.error);
     if (res.writeUpError) setError(`The write-up didn't load: ${res.writeUpError} The facts below are saved.`);
   }
@@ -112,7 +126,17 @@ export default function PlaceSheet({
           )}
         </div>
 
-        {busy && !saved && <p className="text-sm text-muted">Looking into {target.name}. This takes up to a minute.</p>}
+        {job && (
+          <JobProgress
+            job={job}
+            typicalSecs={60}
+            labels={{
+              reading: `Looking up ${target.name}: weather, history, and the sky`,
+              searching: "Researching what's on, where to eat, and what to book",
+              writing: "Writing it up",
+            }}
+          />
+        )}
         {!online && !saved && <p className="text-sm text-warn">Place details need signal the first time. After that they work offline.</p>}
         {error && (
           <p role="alert" className="text-sm text-warn">
